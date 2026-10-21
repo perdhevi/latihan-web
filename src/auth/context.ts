@@ -7,7 +7,8 @@ import type { Session } from './session'
  */
 export type AuthStatus = 'unknown' | 'signedOut' | 'signedIn'
 
-export type Auth = Pick<Session, 'signIn' | 'register' | 'signOut'> & { status: AuthStatus }
+/** `api` is the session's authenticated client; features call the API through it. */
+export type Auth = Pick<Session, 'api' | 'signIn' | 'register' | 'signOut'> & { status: AuthStatus }
 
 export const AuthContext = createContext<Auth | null>(null)
 

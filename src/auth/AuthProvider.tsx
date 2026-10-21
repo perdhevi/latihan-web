@@ -22,7 +22,7 @@ export function AuthProvider({ session, children }: { session: Session; children
   const status: AuthStatus = !hasRefresh ? 'signedOut' : hasAccess || resumed ? 'signedIn' : 'unknown'
 
   const auth = useMemo<Auth>(
-    () => ({ status, signIn: session.signIn, register: session.register, signOut: session.signOut }),
+    () => ({ status, api: session.api, signIn: session.signIn, register: session.register, signOut: session.signOut }),
     [status, session],
   )
   return <AuthContext value={auth}>{children}</AuthContext>

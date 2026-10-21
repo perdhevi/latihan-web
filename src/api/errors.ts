@@ -58,6 +58,13 @@ export function retryAfterSeconds(
   return Math.max(0, Math.ceil((date - now) / 1000))
 }
 
+/** A Retry-After wait in words: "30 seconds", "2 minutes". */
+export function describeWait(seconds: number): string {
+  if (seconds < 60) return seconds === 1 ? '1 second' : `${seconds} seconds`
+  const minutes = Math.ceil(seconds / 60)
+  return minutes === 1 ? '1 minute' : `${minutes} minutes`
+}
+
 function isContractError(
   body: unknown,
 ): body is components['schemas']['Error'] {

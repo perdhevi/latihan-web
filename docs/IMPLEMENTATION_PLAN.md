@@ -214,6 +214,7 @@ refresh token now gets `401` (`curl` it).
 4. TanStack Query provider; a global error boundary that shows the request ID.
 
 **Tests:** route guard redirects; `profile_required` lands on `/welcome`.
+*Done — see [part-03.md](part-03.md).*
 **Tag:** `web-03`.
 
 ## Part 4 — First vertical slice: the exercise catalog ("Ideas")

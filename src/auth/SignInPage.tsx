@@ -1,9 +1,13 @@
 import { useState, type FormEvent } from 'react'
+import { Navigate, useLocation } from 'react-router'
 import { useAuth } from './context'
 import { checkCredentials, describeAuthError, type CredentialsMode } from './credentials'
+import { returnPath } from './redirect'
+import { RestoringSession } from './RequireAuth'
 
 export function SignInPage() {
-  const { signIn, register } = useAuth()
+  const { status, signIn, register } = useAuth()
+  const location = useLocation()
   const [mode, setMode] = useState<CredentialsMode>('signIn')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -11,6 +15,10 @@ export function SignInPage() {
   const [busy, setBusy] = useState(false)
 
   const registering = mode === 'register'
+
+  // Signed in (just now, or already): back to the page that sent us here.
+  if (status === 'signedIn') return <Navigate to={returnPath(location.state)} replace />
+  if (status === 'unknown') return <RestoringSession />
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -20,7 +28,7 @@ export function SignInPage() {
     setBusy(true)
     try {
       await (registering ? register : signIn)(email, password)
-      // Signed in: AuthProvider re-renders the app, this page unmounts.
+      // Signed in: the status change re-renders this page into a redirect.
     } catch (error) {
       setMessage(describeAuthError(error))
       setBusy(false)

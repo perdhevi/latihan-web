@@ -1,4 +1,4 @@
-import { isApiError } from '../api/errors'
+import { describeWait, isApiError } from '../api/errors'
 
 export type CredentialsMode = 'signIn' | 'register'
 
@@ -36,7 +36,7 @@ export function describeAuthError(error: unknown): string {
   if (isApiError(error, 'rate_limited')) {
     return error.retryAfter === undefined
       ? 'Too many attempts. Wait a moment and try again.'
-      : `Too many attempts. Try again in ${waitTime(error.retryAfter)}.`
+      : `Too many attempts. Try again in ${describeWait(error.retryAfter)}.`
   }
   if (isApiError(error, 'invalid_credentials')) {
     return 'Wrong email or password. After five failed attempts the account is locked for 15 minutes.'
@@ -44,10 +44,4 @@ export function describeAuthError(error: unknown): string {
   if (isApiError(error, 'email_taken')) return 'An account with this email already exists. Sign in instead.'
   if (isApiError(error)) return error.message
   return 'Something went wrong. Try again.'
-}
-
-function waitTime(seconds: number): string {
-  if (seconds < 60) return seconds === 1 ? '1 second' : `${seconds} seconds`
-  const minutes = Math.ceil(seconds / 60)
-  return minutes === 1 ? '1 minute' : `${minutes} minutes`
 }

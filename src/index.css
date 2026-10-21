@@ -48,12 +48,16 @@ h3 {
   line-height: 1.2;
 }
 
+a {
+  color: var(--accent);
+}
+
 code {
   font-family: var(--mono);
   font-size: 0.9em;
 }
 
-/* Sign-in page (Part 2). The app shell arrives in Part 3. */
+/* Sign-in and welcome pages. */
 .auth {
   max-width: 400px;
   margin: 0 auto;
@@ -112,4 +116,130 @@ button.link {
 .error {
   margin: 0;
   color: var(--danger);
+}
+
+.status {
+  padding: 48px 16px;
+  text-align: center;
+  color: var(--muted);
+}
+
+/* App shell (Part 3): a side bar from 640px, a bottom bar below. */
+.shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    'top top'
+    'nav main';
+}
+
+.topbar {
+  grid-area: top;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.brand {
+  margin-right: auto;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.who {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+.nav {
+  grid-area: nav;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 8px;
+  border-right: 1px solid var(--border);
+}
+
+.nav a {
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.nav a:hover {
+  background: var(--border);
+}
+
+.nav a.active {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.content {
+  grid-area: main;
+  width: 100%;
+  max-width: 960px;
+  padding: 24px;
+}
+
+.content > section > h1:first-child {
+  margin-top: 0;
+}
+
+@media (width < 640px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'top'
+      'main';
+    padding-bottom: calc(56px + env(safe-area-inset-bottom));
+  }
+
+  .nav {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 1;
+    flex-direction: row;
+    gap: 0;
+    padding: 4px 4px calc(4px + env(safe-area-inset-bottom));
+    border-right: 0;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .nav a {
+    flex: 1;
+    padding: 12px 4px;
+    font-size: 0.85em;
+    text-align: center;
+  }
+
+  .content {
+    padding: 16px;
+  }
+}
+
+.error-page dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 16px;
+}
+
+.error-page dt {
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.error-page dd {
+  margin: 0;
+  overflow-wrap: anywhere;
 }
