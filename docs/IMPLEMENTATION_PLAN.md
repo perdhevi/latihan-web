@@ -318,6 +318,7 @@ null deltas render as "—", never as 0.
    Use an inline SVG; no chart library needed.
 
 **Tests:** week boundaries in UTC (the API buckets in UTC); empty state.
+*Done — see [part-08.md](part-08.md).*
 **Tag:** `web-08`.
 
 ## Part 9 — Profile and body measurements

@@ -142,6 +142,7 @@ export function fakeApi({
     detailCalls: 0,
     plans: plansFake,
     sessions: fakeSessions(plansFake),
+    stats: fakeStats(),
   }
   const sorted = [...catalog].sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id))
   server.use(
@@ -180,6 +181,7 @@ export function fakeApi({
     }),
     ...state.plans.handlers,
     ...state.sessions.handlers,
+    ...state.stats.handlers,
   )
   return state
 }
@@ -505,5 +507,55 @@ function fakeSessions(plans: ReturnType<typeof fakePlans>) {
       record.session = { ...record.session, name }
       record.version++
     },
+  }
+}
+
+type ProgressPoint = components['schemas']['ProgressPoint']
+
+/**
+ * GET /stats/progress: the buckets a test sets for `day` or `week`, within
+ * the requested range, oldest first; empty unless set. Like the server, it
+ * leaves out buckets without sessions (a test simply does not set them).
+ */
+function fakeStats() {
+  const points: Record<string, ProgressPoint[]> = { day: [], week: [], month: [] }
+  const queries: string[] = []
+  const handlers = [
+    http.get(`${origin}/api/v1/stats/progress`, ({ request }) => {
+      const query = new URL(request.url).searchParams
+      queries.push(query.toString())
+      const bucket = query.get('bucket') ?? 'week'
+      const from = query.get('from') ?? ''
+      const to = query.get('to') ?? '9999'
+      const data = points[bucket]
+        .filter((point) => point.bucket >= from.slice(0, 19) && point.bucket < to.slice(0, 19))
+        .sort((a, b) => a.bucket.localeCompare(b.bucket))
+      return HttpResponse.json({ bucket, data })
+    }),
+  ]
+  return {
+    handlers,
+    /** The query string of every request. */
+    queries,
+    set(bucket: 'day' | 'week', data: ProgressPoint[]) {
+      points[bucket] = data
+    },
+  }
+}
+
+const noTotals = { sets: 0, repetitions: 0, volume_kg: 0, minutes: 0 }
+
+/** A progress bucket: `bucket` is its start (YYYY-MM-DD, UTC), the rest is overridable. */
+export function progressPoint(bucket: string, values: Partial<ProgressPoint> = {}): ProgressPoint {
+  return {
+    bucket: `${bucket}T00:00:00Z`,
+    sessions: 1,
+    planned: noTotals,
+    actual: noTotals,
+    unplanned: noTotals,
+    delta: noTotals,
+    volume_completion_pct: null,
+    minutes_completion_pct: null,
+    ...values,
   }
 }

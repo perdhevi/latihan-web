@@ -4,6 +4,7 @@ import { ifMatch, type Versioned } from '../../api/concurrency'
 import type { components } from '../../api/schema'
 import { useAuth } from '../../auth/context'
 import type { ExerciseValue } from '../../shared/exercise'
+import { statsKeys } from '../dashboard/api'
 
 export type Session = components['schemas']['Session']
 export type Comparison = components['schemas']['Comparison']
@@ -78,6 +79,8 @@ function useStoreSession() {
     // An edit changes what was done, so the comparison is out of date.
     queryClient.removeQueries({ queryKey: sessionKeys.comparison(session.data.id) })
     void queryClient.invalidateQueries({ queryKey: sessionKeys.list })
+    // Totals and progress count sessions: the dashboard must ask again.
+    void queryClient.invalidateQueries({ queryKey: statsKeys.all })
   }
 }
 
@@ -117,6 +120,7 @@ export function useDeleteSession(id: string) {
     onSuccess: () => {
       queryClient.removeQueries({ queryKey: sessionKeys.detail(id) })
       void queryClient.invalidateQueries({ queryKey: sessionKeys.list })
+      void queryClient.invalidateQueries({ queryKey: statsKeys.all })
     },
   })
 }

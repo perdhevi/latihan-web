@@ -23,6 +23,11 @@ export function formatDelta(value: number | null | undefined, unit = ''): string
   return `${value > 0 ? '+' : '−'}${number.format(Math.abs(value))}${suffix}`
 }
 
+/** "110%", rounded; null → "—". The API sends floats such as 110.00000000000001. */
+export function formatPercent(value: number | null): string {
+  return value === null ? missing : `${Math.round(value)}%`
+}
+
 /** A set: "6 × 62.5 kg"; null → "—". */
 export function formatSet(set: { repetitions: number; weight_kg: number } | null): string {
   return set === null ? missing : `${set.repetitions} × ${number.format(set.weight_kg)} kg`

@@ -67,3 +67,4 @@ validate it, and what was actually validated.
 | 5 | [Plans: our first writes](docs/part-05.md) | How do we write safely when the network can drop a response, or another device edits the same record? |
 | 6 | [Recording a session](docs/part-06.md) | Where does a workout live before it is saved? |
 | 7 | [History and planned-versus-done](docs/part-07.md) | How do we show what was planned next to what was done? |
+| 8 | [Dashboard and progress](docs/part-08.md) | What does a user want to see first? |
