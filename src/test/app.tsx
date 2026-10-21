@@ -34,6 +34,7 @@ configure({ asyncUtilTimeout: 10_000 })
 
 let consoleErrors: unknown[][] = []
 let consoleErrorsAllowed = false
+let consoleSpy: { mockRestore: () => void } | undefined
 
 /**
  * For a test that means to log errors (a page that fails on purpose and is
@@ -53,13 +54,14 @@ export function setUpFakeServer() {
   beforeEach(() => {
     consoleErrors = []
     consoleErrorsAllowed = false
-    vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => void consoleErrors.push(args))
+    // Kept, so restoring it works even after a test's vi.restoreAllMocks().
+    consoleSpy = vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => void consoleErrors.push(args))
   })
   afterEach(() => {
     cleanup()
     server.resetHandlers()
     localStorage.clear()
-    vi.mocked(console.error).mockRestore()
+    consoleSpy?.mockRestore()
     if (consoleErrors.length > 0 && !consoleErrorsAllowed) {
       const [first] = consoleErrors
       throw new Error(`console.error was called ${consoleErrors.length} time(s); first: ${first.map(String).join(' ')}`)
@@ -150,11 +152,31 @@ export function fakeApi({
     profileVersion: 1,
     /** Every PUT /users/me: its If-Match and body. */
     renames: [] as { ifMatch: string | null; body: unknown }[],
+    logoutCalls: 0,
+    /** DELETE /account calls; the account is gone after the first. */
+    erases: 0,
+    exportCalls: 0,
   }
   const sorted = [...catalog].sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id))
   server.use(
     http.post(`${origin}/api/v1/auth/login`, () => HttpResponse.json(tokens)),
-    http.post(`${origin}/api/v1/auth/logout`, () => new HttpResponse(null, { status: 204 })),
+    http.post(`${origin}/api/v1/auth/logout`, () => {
+      state.logoutCalls++
+      return new HttpResponse(null, { status: 204 })
+    }),
+    http.get(`${origin}/api/v1/account/export`, () => {
+      state.exportCalls++
+      if (state.profile === null) return profileRequired()
+      return new HttpResponse(JSON.stringify({ format: 'latihan-export/1', user: user(state.profile) }), {
+        headers: { 'Content-Type': 'application/json', 'Content-Disposition': 'attachment; filename="latihan-export.json"' },
+      })
+    }),
+    http.delete(`${origin}/api/v1/account`, () => {
+      // Works without a profile; repeating it is harmless.
+      state.erases++
+      state.profile = null
+      return new HttpResponse(null, { status: 204 })
+    }),
     http.get(`${origin}/api/v1/users/me`, () => {
       state.meCalls++
       return state.profile === null
@@ -358,7 +380,7 @@ function renderWithSession(ui: ReactNode, { signedIn = true } = {}) {
       <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
     </AuthProvider>,
   )
-  return { queryClient, user: userEvent.setup() }
+  return { queryClient, tokens: store, user: userEvent.setup() }
 }
 
 /** The whole app at `path`, over the fake API. */

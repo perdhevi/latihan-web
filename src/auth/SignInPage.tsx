@@ -6,7 +6,7 @@ import { returnPath } from './redirect'
 import { RestoringSession } from './RequireAuth'
 
 export function SignInPage() {
-  const { status, signIn, register } = useAuth()
+  const { status, notice, signIn, register } = useAuth()
   const location = useLocation()
   const [mode, setMode] = useState<CredentialsMode>('signIn')
   const [email, setEmail] = useState('')
@@ -44,6 +44,11 @@ export function SignInPage() {
     <main className="auth">
       <h1>latihan</h1>
       <h2>{registering ? 'Create an account' : 'Sign in'}</h2>
+      {notice !== null && (
+        <p className="notice" role="status">
+          {notice}
+        </p>
+      )}
       <form onSubmit={submit} noValidate>
         <label>
           Email

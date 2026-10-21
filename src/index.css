@@ -1006,3 +1006,11 @@ table.totals {
   color: var(--text-strong);
   font-variant-numeric: tabular-nums;
 }
+
+/* Export and erase (Part 10). */
+.notice {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}

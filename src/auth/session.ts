@@ -100,5 +100,14 @@ export function createSession({ tokens, ...options }: ClientOptions & { tokens: 
       tokens.clear()
       if (refreshToken !== null) await revoke(refreshToken)
     },
+
+    /**
+     * Forgets the tokens without asking the server: for a session the server
+     * has already ended, as when the account was erased (there is no login
+     * left to log out of).
+     */
+    forget() {
+      tokens.clear()
+    },
   }
 }

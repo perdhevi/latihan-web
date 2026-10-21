@@ -4,6 +4,7 @@ import type { Versioned } from '../../api/concurrency'
 import { describeError, isApiError } from '../../api/errors'
 import { ChangedElsewhere } from '../../shared/ChangedElsewhere'
 import { Field } from '../../shared/ExerciseEditor'
+import { YourData } from '../account/YourData'
 import { useMeasurements } from '../measurements/api'
 import { metrics, progress } from '../measurements/model'
 import { formatDelta, formatNumber, formatWhen } from '../sessions/format'
@@ -18,6 +19,7 @@ export function ProfilePage() {
       {/* The profile gate has loaded it; render once the version is known. */}
       {me.data !== undefined && <DisplayName opened={me.data} reload={me.refetch} />}
       <Measurements />
+      <YourData />
     </section>
   )
 }

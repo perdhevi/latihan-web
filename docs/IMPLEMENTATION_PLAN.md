@@ -347,6 +347,7 @@ null deltas render as "—", never as 0.
    the server keeps (backups until expiry, an anonymised audit entry).
 
 **Tests:** download uses the header file name; erase clears all client storage.
+*Done — see [part-10.md](part-10.md).*
 **Tag:** `web-10`.
 
 ## Part 11 — Hardening and shipping

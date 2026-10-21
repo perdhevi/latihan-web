@@ -7,6 +7,9 @@ export function AuthProvider({ session, children }: { session: Session; children
   const hasAccess = useSyncExternalStore(tokens.subscribe, () => tokens.access !== null)
   const hasRefresh = useSyncExternalStore(tokens.subscribe, () => tokens.refresh !== null)
   const [resumed, setResumed] = useState(false)
+  // Kept here, not in navigation state: the sign-in guard navigates on its
+  // own when the tokens go, and would replace any state passed along.
+  const [notice, setNotice] = useState<string | null>(null)
 
   // After a reload only the refresh token is left. Trade it now, so the
   // first screen knows whether the session is still alive. A network error
@@ -22,8 +25,25 @@ export function AuthProvider({ session, children }: { session: Session; children
   const status: AuthStatus = !hasRefresh ? 'signedOut' : hasAccess || resumed ? 'signedIn' : 'unknown'
 
   const auth = useMemo<Auth>(
-    () => ({ status, api: session.api, signIn: session.signIn, register: session.register, signOut: session.signOut }),
-    [status, session],
+    () => ({
+      status,
+      notice,
+      api: session.api,
+      signIn: async (email, password) => {
+        setNotice(null)
+        await session.signIn(email, password)
+      },
+      register: async (email, password) => {
+        setNotice(null)
+        await session.register(email, password)
+      },
+      signOut: session.signOut,
+      forget: (message) => {
+        setNotice(message ?? null)
+        session.forget()
+      },
+    }),
+    [status, notice, session],
   )
   return <AuthContext value={auth}>{children}</AuthContext>
 }

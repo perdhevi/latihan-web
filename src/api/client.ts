@@ -48,6 +48,9 @@ export async function unwrapVersioned<Result extends FetchResult>(
   return { data, etag: response.headers.get('ETag') }
 }
 
+/** Like unwrap, with the whole response: for headers such as Content-Disposition. */
+export const unwrapWithResponse = settle
+
 async function settle<Result extends FetchResult>(
   call: Promise<Result>,
 ): Promise<{ data: SuccessData<Result>; response: Response }> {
