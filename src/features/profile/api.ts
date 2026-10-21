@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { unwrap } from '../../api/client'
-import { describeWait, isApiError } from '../../api/errors'
+import { isApiError } from '../../api/errors'
 import { useAuth } from '../../auth/context'
 
 export const meQueryKey = ['users', 'me'] as const
@@ -55,15 +55,4 @@ export function checkDisplayName(name: string): string | null {
   if (trimmed === '') return 'Enter a display name.'
   if ([...trimmed].length > maxDisplayName) return `A display name has at most ${maxDisplayName} characters.`
   return null
-}
-
-/** The message for a failed profile create. */
-export function describeProfileError(error: unknown): string {
-  if (isApiError(error, 'rate_limited')) {
-    return error.retryAfter === undefined
-      ? 'Too many requests. Wait a moment and try again.'
-      : `Too many requests. Try again in ${describeWait(error.retryAfter)}.`
-  }
-  if (isApiError(error)) return error.message
-  return 'Something went wrong. Try again.'
 }

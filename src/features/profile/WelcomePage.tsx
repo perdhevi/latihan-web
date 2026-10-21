@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate, useLocation } from 'react-router'
 import { useIdempotencyKey } from '../../api/concurrency'
-import { isApiError } from '../../api/errors'
+import { describeError, isApiError } from '../../api/errors'
 import { useAuth } from '../../auth/context'
 import { returnPath } from '../../auth/redirect'
-import { checkDisplayName, describeProfileError, useCreateProfile, useMe } from './api'
+import { checkDisplayName, useCreateProfile, useMe } from './api'
 
 /**
  * "Create cloud profile": the first screen of a new account. The API keeps
@@ -23,9 +23,11 @@ export function WelcomePage() {
   const [name, setName] = useState('')
   const [message, setMessage] = useState<string | null>(null)
 
-  // Has a profile (just created, or already had one): on to the app.
-  if (me.data !== undefined) return <Navigate to={returnPath(location.state)} replace />
-  if (me.isError && !isApiError(me.error, 'profile_required')) throw me.error
+  const noProfile = isApiError(me.error, 'profile_required')
+  // Has a profile (just created, or already had one): on to the app. A
+  // profile deleted elsewhere stays cached next to the error; that one is gone.
+  if (me.data !== undefined && !noProfile) return <Navigate to={returnPath(location.state)} replace />
+  if (me.isError && !noProfile) throw me.error
   if (me.isPending) return <p className="status">Loading your profile…</p>
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -37,7 +39,7 @@ export function WelcomePage() {
       { displayName: name, idempotencyKey: key },
       {
         onError: (error) => {
-          if (!isApiError(error, 'profile_exists')) setMessage(describeProfileError(error))
+          if (!isApiError(error, 'profile_exists')) setMessage(describeError(error))
         },
       },
     )

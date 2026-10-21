@@ -1,98 +1,11 @@
 // @vitest-environment jsdom
-import { QueryClientProvider } from '@tanstack/react-query'
-import { cleanup, render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { screen } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { setupServer } from 'msw/node'
-import { createMemoryRouter, RouterProvider } from 'react-router'
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
-import { createQueryClient } from './app/queryClient'
-import { AuthProvider } from './auth/AuthProvider'
-import { createSession } from './auth/session'
-import { createTokenStore, memoryStorage } from './auth/tokens'
+import { describe, expect, it } from 'vitest'
 import { checkDisplayName, meQueryKey } from './features/profile/api'
-import { routes } from './routes'
+import { fakeApi, heading, origin, renderApp, server, setUpFakeServer } from './test/app'
 
-// See session.test.ts: Node's fetch needs an absolute URL, and the client must
-// look fetch up per call so MSW can replace it.
-const origin = 'http://latihan.test'
-const fetch = (request: Request) => globalThis.fetch(request)
-
-const server = setupServer()
-beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
-afterEach(() => {
-  cleanup()
-  server.resetHandlers()
-})
-afterAll(() => server.close())
-
-const tokens = {
-  access_token: 'access-1',
-  token_type: 'Bearer' as const,
-  expires_in: 900,
-  refresh_token: 'refresh-1',
-}
-
-const user = (displayName: string) => ({
-  id: '0190c6a8-0000-7000-8000-000000000001',
-  display_name: displayName,
-  created_at: '2026-10-21T00:00:00Z',
-  updated_at: '2026-10-21T00:00:00Z',
-})
-
-const profileRequired = () =>
-  HttpResponse.json(
-    { error: { code: 'profile_required', message: 'create a profile with POST /api/v1/users first' } },
-    { status: 403 },
-  )
-
-/**
- * A fake API for one account. `profile` is its display name, or null while it
- * has none; POST /users creates it and records the idempotency keys it got.
- */
-function fakeApi({ profile }: { profile: string | null }) {
-  const state = { profile, meCalls: 0, keys: [] as (string | null)[], bodies: [] as unknown[] }
-  server.use(
-    http.post(`${origin}/api/v1/auth/login`, () => HttpResponse.json(tokens)),
-    http.post(`${origin}/api/v1/auth/logout`, () => new HttpResponse(null, { status: 204 })),
-    http.get(`${origin}/api/v1/users/me`, () => {
-      state.meCalls++
-      return state.profile === null ? profileRequired() : HttpResponse.json(user(state.profile))
-    }),
-    http.post(`${origin}/api/v1/users`, async ({ request }) => {
-      const body = (await request.json()) as { display_name: string }
-      state.keys.push(request.headers.get('Idempotency-Key'))
-      state.bodies.push(body)
-      state.profile = body.display_name
-      return HttpResponse.json(user(body.display_name), { status: 201 })
-    }),
-  )
-  return state
-}
-
-/** The whole app at `path`, over the fake API. */
-function renderApp(path: string, { signedIn = true } = {}) {
-  const store = createTokenStore(memoryStorage())
-  if (signedIn) store.set(tokens)
-  const session = createSession({ baseUrl: origin, fetch, tokens: store })
-  const queryClient = createQueryClient()
-  // Keep the retry policy, without its back-off delay.
-  queryClient.setDefaultOptions({
-    ...queryClient.getDefaultOptions(),
-    queries: { ...queryClient.getDefaultOptions().queries, retryDelay: 0 },
-  })
-  const router = createMemoryRouter(routes, { initialEntries: [path] })
-  render(
-    <AuthProvider session={session}>
-      <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
-      </QueryClientProvider>
-    </AuthProvider>,
-  )
-  return { router, queryClient, user: userEvent.setup() }
-}
-
-const heading = (name: string) => screen.findByRole('heading', { level: 1, name })
+setUpFakeServer()
 
 describe('the sign-in guard', () => {
   it('sends a signed-out visitor to sign in, then back to the page they asked for', async () => {

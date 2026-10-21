@@ -1,5 +1,6 @@
-import { QueryClient } from '@tanstack/react-query'
+import { hashKey, QueryCache, QueryClient } from '@tanstack/react-query'
 import { isApiError } from '../api/errors'
+import { meQueryKey } from '../features/profile/api'
 
 /**
  * Worth retrying on its own: the server was unreachable or failed. A 4xx is
@@ -11,7 +12,17 @@ function isTransient(error: unknown): boolean {
 }
 
 export function createQueryClient() {
-  return new QueryClient({
+  const queryClient: QueryClient = new QueryClient({
+    queryCache: new QueryCache({
+      onError: (error, query) => {
+        // The profile was deleted while the app is open, so every data
+        // endpoint now answers profile_required. Asking for `me` again lets
+        // the profile gate send the user to /welcome.
+        if (isApiError(error, 'profile_required') && query.queryHash !== hashKey(meQueryKey)) {
+          void queryClient.invalidateQueries({ queryKey: meQueryKey })
+        }
+      },
+    }),
     defaultOptions: {
       queries: {
         staleTime: 30_000,
@@ -21,4 +32,5 @@ export function createQueryClient() {
       mutations: { retry: false },
     },
   })
+  return queryClient
 }

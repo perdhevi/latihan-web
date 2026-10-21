@@ -65,6 +65,17 @@ export function describeWait(seconds: number): string {
   return minutes === 1 ? '1 minute' : `${minutes} minutes`
 }
 
+/** The message to show for a failed call: the server's, with the wait for a 429. */
+export function describeError(error: unknown): string {
+  if (isApiError(error, 'rate_limited')) {
+    return error.retryAfter === undefined
+      ? 'Too many requests. Wait a moment and try again.'
+      : `Too many requests. Try again in ${describeWait(error.retryAfter)}.`
+  }
+  if (isApiError(error)) return error.message
+  return 'Something went wrong. Try again.'
+}
+
 function isContractError(
   body: unknown,
 ): body is components['schemas']['Error'] {

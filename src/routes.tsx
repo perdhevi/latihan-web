@@ -5,6 +5,7 @@ import { Placeholder } from './app/Placeholder'
 import { Root } from './app/Root'
 import { RequireAuth } from './auth/RequireAuth'
 import { SignInPage } from './auth/SignInPage'
+import { IdeasPage } from './features/catalog/IdeasPage'
 import { HomePage } from './features/dashboard/HomePage'
 import { RequireProfile } from './features/profile/RequireProfile'
 import { WelcomePage } from './features/profile/WelcomePage'
@@ -50,10 +51,7 @@ export const routes: RouteObject[] = [
                         path: '/session/active',
                         element: <Placeholder title="Session in progress" part={6}>The workout you are recording.</Placeholder>,
                       },
-                      {
-                        path: '/ideas',
-                        element: <Placeholder title="Ideas" part={4}>The exercise catalog.</Placeholder>,
-                      },
+                      { path: '/ideas', element: <IdeasPage /> },
                       {
                         path: '/plans',
                         element: <Placeholder title="Plans" part={5}>Your workout plans.</Placeholder>,

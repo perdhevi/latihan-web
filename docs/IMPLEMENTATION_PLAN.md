@@ -232,6 +232,7 @@ refresh token now gets `401` (`curl` it).
    note it as deferred.
 
 **Tests:** pagination stops when `next_cursor` is absent; filter changes the query.
+*Done — see [part-04.md](part-04.md).*
 **Tag:** `web-04`.
 
 ## Part 5 — Plans: our first writes
