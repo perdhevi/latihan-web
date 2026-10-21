@@ -89,7 +89,7 @@ the article should argue for the choice and name what it costs.
 ### Stack
 
 Already in the scaffold: React 19, TypeScript 6, Vite 8, ESLint.
-To add (pin exact versions when installing):
+To add (pin exact versions, none younger than 14 days at install time):
 
 | Package | Why |
 | --- | --- |
@@ -97,7 +97,7 @@ To add (pin exact versions when installing):
 | `@tanstack/react-query` | server cache, pagination, invalidation after writes |
 | `openapi-fetch`, `openapi-typescript` (dev) | typed client generated from the contract |
 | `vitest`, `@testing-library/react`, `@testing-library/user-event`, `jsdom` (dev) | unit and component tests |
-| `msw` (dev) | fake API in tests, modelled on the contract |
+| `msw` 2.x (dev) | fake API in tests, modelled on the contract (2.x matches Vitest's peer range) |
 | `@playwright/test` (dev) | end-to-end against the real API in Docker |
 
 No UI kit: plain CSS with custom properties keeps the article about the
@@ -147,6 +147,7 @@ src/
 
 **Validate:** `npm run dev`, open the page, network tab shows `/api/v1/exercises → 401`
 from the same origin with no CORS error.
+*Done — see [part-00.md](part-00.md).*
 **Tag:** `web-00`.
 
 ## Part 1 — A typed client generated from the contract
@@ -160,8 +161,11 @@ from the same origin with no CORS error.
 4. `src/api/errors.ts`: `ApiError { status, code, message, requestId }`
    built from the `Error` schema and the `X-Request-ID` header. Helpers:
    `isCode(e, 'plan_in_use')`, `retryAfterSeconds(response)`.
-5. Set up Vitest + jsdom + MSW. First test: an MSW `401` becomes an `ApiError`
+5. Set up Vitest + MSW (jsdom and Testing Library arrive with the first
+   component tests in Part 3). First test: an MSW `401` becomes an `ApiError`
    with `code: 'unauthenticated'`.
+
+*Done — see [part-01.md](part-01.md).*
 
 **Validate:** `npm run gen:api && npx tsc -b && npx vitest run`.
 **Tag:** `web-01`.

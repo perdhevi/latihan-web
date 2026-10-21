@@ -48,6 +48,9 @@ LATIHAN_API_URL=http://localhost:9090 npm run dev
 | `npm run dev` | Development server with the `/api` proxy |
 | `npm run build` | Type-check and build to `dist/` |
 | `npm run lint` | ESLint |
+| `npm test` | Unit tests (Vitest, with MSW as a fake API) |
+| `npm run gen:api` | Regenerate `src/api/schema.d.ts` from `../latihanAPI/api/openapi.yaml` (or `LATIHAN_API_SPEC`) |
+| `npm run check:api` | Fail if `schema.d.ts` no longer matches the contract |
 
 ## Build log
 
@@ -57,3 +60,4 @@ validate it, and what was actually validated.
 | Part | Document | Question |
 | --- | --- | --- |
 | 0 | [Baseline](docs/part-00.md) | What does the client talk to, and how does the browser reach it? |
+| 1 | [A typed client from the contract](docs/part-01.md) | How do we keep the client honest when the API changes? |
