@@ -1,6 +1,6 @@
-import { cloneElement, useId, useState, type InputHTMLAttributes, type ReactElement } from 'react'
+import { cloneElement, useId, useState, type InputHTMLAttributes, type ReactElement, type ReactNode } from 'react'
 import { categories, categoryLabel, type Category } from '../features/catalog/api'
-import { newDraft, type ExerciseDraft, type ExerciseErrors } from './exercise'
+import { newDraft, type ExerciseDraft, type ExerciseErrors, type PickedExercise } from './exercise'
 import { ExercisePicker } from './ExercisePicker'
 
 // The contract's limit on exercises in one plan or session.
@@ -11,20 +11,29 @@ const maxExercises = 100
  * per exercise, shaped by its kind. Strength has sets of reps and weight;
  * every other kind has minutes and an optional average heart rate.
  * Controlled: the caller keeps the drafts and the errors to show.
+ *
+ * Rows may carry more than a draft (a session's `plan_exercise_id`): edits
+ * keep every other field, `create` makes the row for a picked exercise, and
+ * `rowNote` adds a line under a row's title.
  */
-export function ExerciseEditor({
+export function ExerciseEditor<Row extends ExerciseDraft = ExerciseDraft>({
   exercises,
   errors,
   onChange,
+  create = newDraft as (picked: PickedExercise) => Row,
+  rowNote,
 }: {
-  exercises: ExerciseDraft[]
+  exercises: Row[]
   errors: (ExerciseErrors | undefined)[]
-  onChange: (exercises: ExerciseDraft[]) => void
+  onChange: (exercises: Row[]) => void
+  create?: (picked: PickedExercise) => Row
+  rowNote?: (row: Row) => ReactNode
 }) {
   const [picking, setPicking] = useState(false)
 
   function update(index: number, draft: ExerciseDraft) {
-    onChange(exercises.map((current, i) => (i === index ? draft : current)))
+    // ExerciseRow spreads the row it was given, so the extra fields survive.
+    onChange(exercises.map((current, i) => (i === index ? (draft as Row) : current)))
   }
 
   function move(index: number, by: number) {
@@ -41,6 +50,7 @@ export function ExerciseEditor({
           key={draft.key}
           index={index}
           draft={draft}
+          note={rowNote?.(draft)}
           errors={errors[index]}
           first={index === 0}
           last={index === exercises.length - 1}
@@ -58,7 +68,7 @@ export function ExerciseEditor({
               Done
             </button>
           </div>
-          <ExercisePicker onPick={(picked) => onChange([...exercises, newDraft(picked)])} />
+          <ExercisePicker onPick={(picked) => onChange([...exercises, create(picked)])} />
         </div>
       ) : (
         <button
@@ -77,6 +87,7 @@ export function ExerciseEditor({
 function ExerciseRow({
   index,
   draft,
+  note,
   errors = {},
   first,
   last,
@@ -86,6 +97,7 @@ function ExerciseRow({
 }: {
   index: number
   draft: ExerciseDraft
+  note?: ReactNode
   errors?: ExerciseErrors
   first: boolean
   last: boolean
@@ -100,6 +112,7 @@ function ExerciseRow({
   return (
     <fieldset className="exercise-row">
       <legend>Exercise {index + 1}</legend>
+      {note}
 
       <Field id={`${id}-name`} label="Name" error={errors.name}>
         <input value={draft.name} onChange={(event) => set('name', event.target.value)} />

@@ -604,3 +604,50 @@ dialog.confirm .actions {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Recording a session (Part 6). */
+a.button.secondary {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-strong);
+}
+
+.choices {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.choice {
+  display: grid;
+  gap: 2px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+}
+
+.choice .name {
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.targets .target {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+.targets .target > span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.targets .name {
+  font-weight: 600;
+  color: var(--text-strong);
+}

@@ -1,3 +1,4 @@
+import { StartSession } from '../active-session/StartSession'
 import { useMe } from '../profile/api'
 
 export function HomePage() {
@@ -5,7 +6,10 @@ export function HomePage() {
   return (
     <section>
       <h1>Hi, {me.data?.display_name}</h1>
-      <p>This week's totals, recent sessions and a Start button come here.</p>
+      <p>
+        <StartSession />
+      </p>
+      <p>This week's totals and recent sessions come here.</p>
       <p className="hint">Arrives in Part 8.</p>
     </section>
   )

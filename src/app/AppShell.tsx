@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router'
 import { useAuth } from '../auth/context'
+import { ActiveSessionProvider } from '../features/active-session/ActiveSessionProvider'
 import { useMe } from '../features/profile/api'
 
 // Mobile's five destinations, in the same order.
@@ -35,7 +36,12 @@ export function AppShell() {
         ))}
       </nav>
       <main className="content">
-        <Outlet />
+        {/* The profile gate has loaded `me`; the draft is kept per user. */}
+        {me.data !== undefined && (
+          <ActiveSessionProvider key={me.data.id} userId={me.data.id}>
+            <Outlet />
+          </ActiveSessionProvider>
+        )}
       </main>
     </div>
   )

@@ -286,6 +286,7 @@ when another device edits the same record?
 
 **Tests:** draft survives a remount; finish failure keeps the draft and key;
 `plan_exercise_id` never repeats (the server rejects that).
+*Done — see [part-06.md](part-06.md).*
 **Tag:** `web-06`.
 
 ## Part 7 — History and planned-versus-done

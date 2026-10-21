@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, configure, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
@@ -25,6 +25,11 @@ const fetch = (request: Request) => globalThis.fetch(request)
 
 export const server = setupServer()
 
+// findBy… waits 1 s by default. The first render of the whole app in a test
+// file is cold (modules, the fake API), and under a busy machine it has
+// taken longer; the tests' own budget is in vite.config.ts.
+configure({ asyncUtilTimeout: 5_000 })
+
 export function setUpFakeServer() {
   beforeAll(() => {
     shimDialog()
@@ -33,6 +38,7 @@ export function setUpFakeServer() {
   afterEach(() => {
     cleanup()
     server.resetHandlers()
+    localStorage.clear()
   })
   afterAll(() => server.close())
 }
@@ -102,6 +108,7 @@ export function fakeApi({
   catalog?: CatalogExercise[]
   plans?: PlanSeed[]
 }) {
+  const plansFake = fakePlans(plans)
   const state = {
     profile,
     meCalls: 0,
@@ -110,7 +117,8 @@ export function fakeApi({
     /** The query string of every GET /exercises. */
     catalogQueries: [] as string[],
     detailCalls: 0,
-    plans: fakePlans(plans),
+    plans: plansFake,
+    sessions: fakeSessions(plansFake),
   }
   const sorted = [...catalog].sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id))
   server.use(
@@ -148,6 +156,7 @@ export function fakeApi({
         : HttpResponse.json(exercise)
     }),
     ...state.plans.handlers,
+    ...state.sessions.handlers,
   )
   return state
 }
@@ -267,6 +276,15 @@ function fakePlans(seeds: PlanSeed[]) {
     /** Every plan, oldest first. */
     all: () => [...records.values()].map((record) => record.plan),
     etag,
+    get: (id: string) => records.get(id)?.plan,
+    /** A session now uses the plan: its exercises are fixed. */
+    markInUse(id: string) {
+      records.get(id)!.inUse = true
+    },
+    /** Deleted on another device. */
+    deleteElsewhere(id: string) {
+      records.delete(id)
+    },
     /** Another device renames the plan: a new version. */
     renameElsewhere(id: string, name: string) {
       const record = records.get(id)!
@@ -307,3 +325,114 @@ export function renderComponent(ui: ReactNode) {
 }
 
 export const heading = (name: string) => screen.findByRole('heading', { level: 1, name })
+
+type Session = components['schemas']['Session']
+type SessionInput = components['schemas']['SessionInput']
+type SessionRequest = { method: string; id?: string; ifMatch: string | null; key: string | null; body: SessionInput }
+
+/**
+ * Sessions as the server keeps them: creates replayed per Idempotency-Key
+ * (422 for another body); `plan_id` must name an existing plan
+ * (400 invalid_reference) and `plan_exercise_id` one of its exercises, at
+ * most once (400 validation_failed); a saved session puts its plan in use;
+ * writes with an older If-Match get 412.
+ */
+function fakeSessions(plans: ReturnType<typeof fakePlans>) {
+  let made = 0
+  const records = new Map<string, { session: Session; version: number }>()
+  const replays = new Map<string, { body: string; session: Session }>()
+  const requests: SessionRequest[] = []
+  const etag = (id: string) => `"s${records.get(id)!.version}"`
+  const found = (id: string, status = 200) =>
+    HttpResponse.json(records.get(id)!.session, { status, headers: { ETag: etag(id) } })
+
+  function check(body: SessionInput) {
+    const planId = body.plan_id ?? null
+    const plan = planId === null ? undefined : plans.get(planId)
+    if (planId !== null && plan === undefined) {
+      return apiError(400, 'invalid_reference', 'referenced user, plan or exercise does not exist for this user')
+    }
+    const links = body.exercises.flatMap((exercise) => exercise.plan_exercise_id ?? [])
+    if (new Set(links).size !== links.length) {
+      return apiError(400, 'validation_failed', 'plan_exercise_id must not repeat')
+    }
+    if (links.some((link) => !plan?.exercises.some((target) => target.id === link))) {
+      return apiError(400, 'validation_failed', "plan_exercise_id must belong to the session's plan")
+    }
+    return undefined
+  }
+
+  function save(body: SessionInput, id: string): Session {
+    const previous = records.get(id)
+    const session = {
+      id,
+      user_id: user('').id,
+      name: body.name,
+      notes: body.notes ?? '',
+      performed_at: body.performed_at,
+      plan_id: body.plan_id ?? null,
+      exercises: body.exercises,
+      created_at: previous?.session.created_at ?? '2026-10-21T08:00:00Z',
+      updated_at: '2026-10-21T08:00:00Z',
+    } as Session
+    records.set(id, { session, version: (previous?.version ?? 0) + 1 })
+    if (session.plan_id !== null) plans.markInUse(session.plan_id)
+    return session
+  }
+
+  const handlers = [
+    http.post(`${origin}/api/v1/sessions`, async ({ request }) => {
+      const body = (await request.json()) as SessionInput
+      const key = request.headers.get('Idempotency-Key')
+      requests.push({ method: 'POST', ifMatch: null, key, body })
+      const replay = key === null ? undefined : replays.get(key)
+      if (replay !== undefined) {
+        if (replay.body !== JSON.stringify(body)) {
+          return apiError(422, 'idempotency_key_reused', 'this key was already used for a different request')
+        }
+        return HttpResponse.json(replay.session, { status: 201, headers: { 'Idempotent-Replayed': 'true' } })
+      }
+      const refused = check(body)
+      if (refused !== undefined) return refused
+      made++
+      const session = save(body, `0190c6a8-0000-7000-a000-${String(made).padStart(12, '0')}`)
+      if (key !== null) replays.set(key, { body: JSON.stringify(body), session })
+      return found(session.id, 201)
+    }),
+    http.get(`${origin}/api/v1/sessions/:id`, ({ params }) => {
+      const id = params.id as string
+      return records.has(id) ? found(id) : apiError(404, 'session_not_found', 'session not found')
+    }),
+    http.put(`${origin}/api/v1/sessions/:id`, async ({ params, request }) => {
+      const id = params.id as string
+      const body = (await request.json()) as SessionInput
+      const ifMatch = request.headers.get('If-Match')
+      requests.push({ method: 'PUT', id, ifMatch, key: null, body })
+      if (!records.has(id)) return apiError(404, 'session_not_found', 'session not found')
+      if (ifMatch !== null && ifMatch !== etag(id)) {
+        return apiError(412, 'precondition_failed', 'record changed since it was read')
+      }
+      const refused = check(body)
+      if (refused !== undefined) return refused
+      save(body, id)
+      return found(id)
+    }),
+  ]
+
+  return {
+    handlers,
+    requests,
+    all: () => [...records.values()].map((record) => record.session),
+    /** A saved session, as if recorded before this test. */
+    seed(body: SessionInput) {
+      made++
+      return save(body, `0190c6a8-0000-7000-a000-${String(made).padStart(12, '0')}`)
+    },
+    /** Another device renames the session: a new version. */
+    renameElsewhere(id: string, name: string) {
+      const record = records.get(id)!
+      record.session = { ...record.session, name }
+      record.version++
+    },
+  }
+}

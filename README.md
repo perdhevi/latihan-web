@@ -65,3 +65,4 @@ validate it, and what was actually validated.
 | 3 | [App shell, routes and the profile gate](docs/part-03.md) | What does a signed-in user without a profile see? |
 | 4 | [The exercise catalog](docs/part-04.md) | How do we read a paginated, read-only list? |
 | 5 | [Plans: our first writes](docs/part-05.md) | How do we write safely when the network can drop a response, or another device edits the same record? |
+| 6 | [Recording a session](docs/part-06.md) | Where does a workout live before it is saved? |

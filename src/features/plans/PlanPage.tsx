@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router'
 import { useIdempotencyKeys, type Versioned } from '../../api/concurrency'
 import { describeError, isApiError } from '../../api/errors'
+import { ChangedElsewhere } from '../../shared/ChangedElsewhere'
 import { ConfirmDialog } from '../../shared/ConfirmDialog'
 import { draftFrom } from '../../shared/exercise'
 import { useCreatePlan, useDeletePlan, usePlan, useUpdatePlan, type Plan, type PlanValue } from './api'
@@ -91,20 +92,11 @@ function PlanEditor({
   let problem = null
   if (isApiError(error, 'precondition_failed')) {
     problem = (
-      <div className="problem conflict" role="alert">
-        <p>This plan changed on another device.</p>
-        <p className="hint">
-          Reload it to see those changes, or keep your copy and save it over them.
-        </p>
-        <div className="actions">
-          <button type="button" onClick={() => void takeLatest({ keepMine: false })}>
-            Reload
-          </button>
-          <button type="button" className="secondary" onClick={() => void takeLatest({ keepMine: true })}>
-            Keep my copy
-          </button>
-        </div>
-      </div>
+      <ChangedElsewhere
+        what="plan"
+        onReload={() => void takeLatest({ keepMine: false })}
+        onKeepMine={() => void takeLatest({ keepMine: true })}
+      />
     )
   } else if (isApiError(error, 'plan_in_use') || (isApiError(error, 'plan_not_found') && error === update.error)) {
     problem = (

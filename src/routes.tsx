@@ -5,12 +5,15 @@ import { Placeholder } from './app/Placeholder'
 import { Root } from './app/Root'
 import { RequireAuth } from './auth/RequireAuth'
 import { SignInPage } from './auth/SignInPage'
+import { ActiveSessionPage } from './features/active-session/ActiveSessionPage'
 import { IdeasPage } from './features/catalog/IdeasPage'
 import { HomePage } from './features/dashboard/HomePage'
 import { NewPlanPage } from './features/plans/NewPlanPage'
 import { PlanPage } from './features/plans/PlanPage'
 import { PlansPage } from './features/plans/PlansPage'
 import { RequireProfile } from './features/profile/RequireProfile'
+import { SessionEditPage } from './features/sessions/SessionEditPage'
+import { SessionPage } from './features/sessions/SessionPage'
 import { WelcomePage } from './features/profile/WelcomePage'
 
 /**
@@ -46,14 +49,9 @@ export const routes: RouteObject[] = [
                         path: '/sessions',
                         element: <Placeholder title="Sessions" part={7}>Your previous sessions, newest first.</Placeholder>,
                       },
-                      {
-                        path: '/sessions/:id',
-                        element: <Placeholder title="Session" part={7}>What you did, next to what was planned.</Placeholder>,
-                      },
-                      {
-                        path: '/session/active',
-                        element: <Placeholder title="Session in progress" part={6}>The workout you are recording.</Placeholder>,
-                      },
+                      { path: '/sessions/:id', element: <SessionPage /> },
+                      { path: '/sessions/:id/edit', element: <SessionEditPage /> },
+                      { path: '/session/active', element: <ActiveSessionPage /> },
                       { path: '/ideas', element: <IdeasPage /> },
                       { path: '/plans', element: <PlansPage /> },
                       { path: '/plans/new', element: <NewPlanPage /> },

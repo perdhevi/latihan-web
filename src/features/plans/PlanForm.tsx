@@ -1,8 +1,7 @@
-import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'react'
-import { useBlocker } from 'react-router'
-import { ConfirmDialog } from '../../shared/ConfirmDialog'
+import { useId, useState, type FormEvent, type ReactNode } from 'react'
 import { length, validateExercise, type ExerciseDraft, type ExerciseErrors, type ExerciseValue } from '../../shared/exercise'
 import { ExerciseEditor, Field } from '../../shared/ExerciseEditor'
+import { UnsavedChanges } from '../../shared/UnsavedChanges'
 import type { PlanValue } from './api'
 
 export type PlanDraft = { name: string; notes: string; exercises: ExerciseDraft[] }
@@ -74,24 +73,6 @@ export function PlanForm({
   const result = validatePlan(draft)
   const errors = showErrors && 'errors' in result ? result.errors : { rows: [] }
 
-  const blocker = useBlocker(
-    ({ currentLocation, nextLocation }) =>
-      dirty &&
-      currentLocation.pathname !== nextLocation.pathname &&
-      // Signed out, or the profile is gone: the app is moving the user, and
-      // keeping them here would not keep the plan.
-      nextLocation.pathname !== '/sign-in' &&
-      nextLocation.pathname !== '/welcome',
-  )
-
-  useEffect(() => {
-    if (!dirty) return
-    // Closing the tab or reloading: the browser asks with its own words.
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault()
-    window.addEventListener('beforeunload', warn)
-    return () => window.removeEventListener('beforeunload', warn)
-  }, [dirty])
-
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const submitter = (event.nativeEvent as SubmitEvent).submitter
@@ -129,16 +110,7 @@ export function PlanForm({
         </button>
       </div>
 
-      <ConfirmDialog
-        open={blocker.state === 'blocked'}
-        title="Discard this plan?"
-        confirmLabel="Discard"
-        cancelLabel="Keep editing"
-        onConfirm={() => blocker.proceed?.()}
-        onCancel={() => blocker.reset?.()}
-      >
-        <p>Unsaved changes will be lost.</p>
-      </ConfirmDialog>
+      <UnsavedChanges dirty={dirty} title="Discard this plan?" />
     </form>
   )
 }
