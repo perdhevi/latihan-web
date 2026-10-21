@@ -112,7 +112,7 @@ between them.
 npm run check:api   # API types match the contract.
 npx tsc -b          # no output, exit 0
 npm run lint        # no output, exit 0
-npm test            # Tests  117 passed (117)
+npm test            # Tests  118 passed (118)
 npm run build       # built in …
 npm run dev         # with the API running
 ```
@@ -161,10 +161,11 @@ On 2026-10-21 (Windows 11, Node 24, API from Docker):
 - Step 3 found the unreadable labels (above); fixed and re-measured: SVG
   343px wide at 375, text 11px, four week labels, tooltip 218–338px inside
   a chart spanning 16–359px.
-- **Not** covered: the refresh of the stats after *finishing* or *editing*
-  a session has no test of its own (deleting does); it is the same call in
-  `useStoreSession()`. The chart with many weeks of real data was only
-  seen in tests; the account has one week.
+- Added on the second check: a test that *finishing* a session refreshes
+  the stats (it fails with the refresh in `useStoreSession()` removed).
+  Editing uses the same call and has no test of its own. The chart with
+  many weeks of real data was only seen in tests; the account has one
+  week.
 
 ## Automated tests
 
@@ -180,7 +181,7 @@ Wednesday 21 October 2026, 10:00 UTC (only `Date` is faked):
 - two consecutive weeks are one line;
 - no planned work: a sentence instead of a chart;
 - recent sessions are the three newest;
-- deleting a session makes Home ask for the totals again.
+- finishing or deleting a session makes Home ask for the totals again.
 
 `src/features/dashboard/api.test.ts`: the UTC week starts on Monday,
 Sunday 23:59 is still the old week, Monday 05:00 in Jakarta is last

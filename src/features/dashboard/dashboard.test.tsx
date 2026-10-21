@@ -134,6 +134,26 @@ describe('recent sessions', () => {
     ).toEqual(['D', 'C', 'B'])
   })
 
+  it('asks for the totals again after a session is finished', async () => {
+    const api = fakeApi({ profile: 'Ana' })
+    const { router, user } = renderApp('/')
+    await user.click(await screen.findByRole('button', { name: 'Start a new session' }))
+    await user.click(await within(screen.getByRole('dialog')).findByRole('button', { name: /No plan/ }))
+    await heading('Workout')
+    await waitFor(() => expect(api.stats.queries).toHaveLength(2))
+
+    await user.click(screen.getByRole('button', { name: 'Add exercise' }))
+    await user.type(screen.getByLabelText('Name', { selector: '.picker input' }), 'Run')
+    await user.selectOptions(screen.getByLabelText('Kind', { selector: '.picker select' }), 'Cardio')
+    await user.click(screen.getByRole('button', { name: 'Add exercise' }))
+    await user.type(screen.getByLabelText('Minutes'), '20')
+    await user.click(screen.getByRole('button', { name: 'Finish session' }))
+    await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/sessions\//))
+    await router.navigate('/')
+    await heading('Hi, Ana')
+    await waitFor(() => expect(api.stats.queries).toHaveLength(4))
+  })
+
   it('asks for the totals again after a session is deleted', async () => {
     const api = fakeApi({ profile: 'Ana' })
     api.sessions.seed({
