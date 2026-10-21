@@ -194,6 +194,8 @@ from the same origin with no CORS error.
 **Tests:** two parallel requests with an expired token cause exactly one
 `/auth/refresh` call; a rejected refresh clears storage and returns to sign-in;
 reload keeps the session (refresh token in `sessionStorage`).
+*Done — see [part-02.md](part-02.md).*
+
 **Validate:** register in the browser, reload, still signed in; sign out, the old
 refresh token now gets `401` (`curl` it).
 **Tag:** `web-02`.

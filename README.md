@@ -61,3 +61,4 @@ validate it, and what was actually validated.
 | --- | --- | --- |
 | 0 | [Baseline](docs/part-00.md) | What does the client talk to, and how does the browser reach it? |
 | 1 | [A typed client from the contract](docs/part-01.md) | How do we keep the client honest when the API changes? |
+| 2 | [Signing in and staying signed in](docs/part-02.md) | How does a browser hold a session without leaking it? |

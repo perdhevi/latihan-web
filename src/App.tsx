@@ -1,17 +1,32 @@
 import { useEffect, useState } from 'react'
-import { api, unwrap } from './api/client'
+import { unwrap } from './api/client'
 import { ApiError } from './api/errors'
+import { api } from './auth/appSession'
+import { useAuth } from './auth/context'
+import { SignInPage } from './auth/SignInPage'
 
 type Probe =
   | { state: 'loading' }
   | { state: 'loaded'; count: number }
   | { state: 'failed'; error: ApiError }
 
-// Still a probe page, now through the typed client: the path and its query
-// parameters are checked against the contract, and a failure arrives as an
-// ApiError carrying the contract's error code. Without a token the API
-// answers 401 unauthenticated; Part 2 adds signing in.
+// Signed out: the sign-in page. Signed in: still the probe page from Part 1,
+// now with a token, so the API answers 200 instead of 401. Part 3 replaces
+// this with routes and the app shell.
 function App() {
+  const { status } = useAuth()
+  if (status === 'unknown') {
+    return (
+      <main className="auth">
+        <p>Restoring your session…</p>
+      </main>
+    )
+  }
+  return status === 'signedIn' ? <Probe /> : <SignInPage />
+}
+
+function Probe() {
+  const { signOut } = useAuth()
   const [probe, setProbe] = useState<Probe>({ state: 'loading' })
 
   useEffect(() => {
@@ -59,6 +74,9 @@ function App() {
           )}
         </dl>
       )}
+      <button type="button" onClick={() => void signOut()}>
+        Sign out
+      </button>
     </main>
   )
 }

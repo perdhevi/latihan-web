@@ -13,9 +13,6 @@ export function createApiClient(options: ClientOptions = {}) {
   return createClient<paths>({ baseUrl: '', ...options })
 }
 
-/** The client the app uses. Part 2 adds authentication to it. */
-export const api = createApiClient()
-
 type FetchResult =
   | { data: unknown; error?: never; response: Response }
   | { data?: never; error: unknown; response: Response }
@@ -41,6 +38,9 @@ export async function unwrap<Result extends FetchResult>(
     result = await call
   } catch (cause) {
     if (cause instanceof DOMException && cause.name === 'AbortError') throw cause
+    // Middleware (the auth session) already speaks ApiError: a rejected
+    // refresh must not be reported as a network failure.
+    if (cause instanceof ApiError) throw cause
     // A success body that is not JSON surfaces here as a SyntaxError.
     if (cause instanceof SyntaxError) {
       throw new ApiError(0, 'unexpected_response', 'The server sent a response that is not JSON.', { cause })
