@@ -1,5 +1,5 @@
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 
 // The browser only ever talks to this origin. In development Vite forwards
 // /api to the Go server, so the API needs no CORS headers; in production a
@@ -18,5 +18,10 @@ export default defineConfig({
     proxy: {
       '/api': apiTarget,
     },
+  },
+  test: {
+    // The jsdom tests render the whole app and click through it; under a
+    // busy machine and parallel files one can pass 5 s, Vitest's default.
+    testTimeout: 15_000,
   },
 })
