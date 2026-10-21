@@ -1,16 +1,17 @@
 import type { RouteObject } from 'react-router'
 import { AppShell } from './app/AppShell'
 import { ErrorPage, NotFound } from './app/ErrorPage'
-import { Placeholder } from './app/Placeholder'
 import { Root } from './app/Root'
 import { RequireAuth } from './auth/RequireAuth'
 import { SignInPage } from './auth/SignInPage'
 import { ActiveSessionPage } from './features/active-session/ActiveSessionPage'
 import { IdeasPage } from './features/catalog/IdeasPage'
 import { HomePage } from './features/dashboard/HomePage'
+import { MeasurementPage, NewMeasurementPage } from './features/measurements/MeasurementPages'
 import { NewPlanPage } from './features/plans/NewPlanPage'
 import { PlanPage } from './features/plans/PlanPage'
 import { PlansPage } from './features/plans/PlansPage'
+import { ProfilePage } from './features/profile/ProfilePage'
 import { RequireProfile } from './features/profile/RequireProfile'
 import { SessionEditPage } from './features/sessions/SessionEditPage'
 import { SessionPage } from './features/sessions/SessionPage'
@@ -54,14 +55,9 @@ export const routes: RouteObject[] = [
                       { path: '/plans', element: <PlansPage /> },
                       { path: '/plans/new', element: <NewPlanPage /> },
                       { path: '/plans/:id', element: <PlanPage /> },
-                      {
-                        path: '/profile',
-                        element: <Placeholder title="Profile" part={9}>Your name and body measurements.</Placeholder>,
-                      },
-                      {
-                        path: '/profile/measurements/new',
-                        element: <Placeholder title="New measurement" part={9}>Record a body measurement.</Placeholder>,
-                      },
+                      { path: '/profile', element: <ProfilePage /> },
+                      { path: '/profile/measurements/new', element: <NewMeasurementPage /> },
+                      { path: '/profile/measurements/:id', element: <MeasurementPage /> },
                       { path: '*', element: <NotFound /> },
                     ],
                   },

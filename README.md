@@ -68,3 +68,4 @@ validate it, and what was actually validated.
 | 6 | [Recording a session](docs/part-06.md) | Where does a workout live before it is saved? |
 | 7 | [History and planned-versus-done](docs/part-07.md) | How do we show what was planned next to what was done? |
 | 8 | [Dashboard and progress](docs/part-08.md) | What does a user want to see first? |
+| 9 | [Profile and body measurements](docs/part-09.md) | How do we edit records whose fields are all optional? |

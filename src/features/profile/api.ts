@@ -1,8 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { unwrap } from '../../api/client'
+import { unwrapVersioned } from '../../api/client'
+import { ifMatch, type Versioned } from '../../api/concurrency'
 import { isApiError } from '../../api/errors'
+import type { components } from '../../api/schema'
 import { useAuth } from '../../auth/context'
 
+export type User = components['schemas']['User']
+
+/** Holds the profile with its ETag (`Versioned<User>`); `useMe()` selects the user. */
 export const meQueryKey = ['users', 'me'] as const
 
 /**
@@ -11,12 +16,39 @@ export const meQueryKey = ['users', 'me'] as const
  * `retryOnMount: false` takes a cached error as it is instead of asking again.
  */
 export function useMe({ retryOnMount = true } = {}) {
-  const { api } = useAuth()
-  return useQuery({
+  return useQuery({ ...meQuery(useAuth().api), retryOnMount, select: (me: Versioned<User>) => me.data })
+}
+
+/** The profile with the ETag it was read at, for renaming. Same cache entry as `useMe()`. */
+export function useMeVersioned() {
+  return useQuery(meQuery(useAuth().api))
+}
+
+function meQuery(api: ReturnType<typeof useAuth>['api']) {
+  return {
     queryKey: meQueryKey,
-    retryOnMount,
-    queryFn: ({ signal }) =>
-      unwrap(api.GET('/api/v1/users/{userID}', { params: { path: { userID: 'me' } }, signal })),
+    queryFn: ({ signal }: { signal: AbortSignal }) =>
+      unwrapVersioned(api.GET('/api/v1/users/{userID}', { params: { path: { userID: 'me' } }, signal })),
+  }
+}
+
+/**
+ * Renames the profile, if it is still at the version `etag` was read at;
+ * otherwise `412 precondition_failed`. The answer goes into the cache, so
+ * the top bar shows the new name at once.
+ */
+export function useRenameProfile() {
+  const { api } = useAuth()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ displayName, etag }: { displayName: string; etag: string | null }) =>
+      unwrapVersioned(
+        api.PUT('/api/v1/users/{userID}', {
+          params: { path: { userID: 'me' }, header: ifMatch(etag) },
+          body: { display_name: displayName.trim() },
+        }),
+      ),
+    onSuccess: (me) => queryClient.setQueryData(meQueryKey, me),
   })
 }
 
@@ -30,13 +62,13 @@ export function useCreateProfile() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ displayName, idempotencyKey }: { displayName: string; idempotencyKey: string }) =>
-      unwrap(
+      unwrapVersioned(
         api.POST('/api/v1/users', {
           params: { header: { 'Idempotency-Key': idempotencyKey } },
           body: { display_name: displayName.trim() },
         }),
       ),
-    onSuccess: (user) => queryClient.setQueryData(meQueryKey, user),
+    onSuccess: (me) => queryClient.setQueryData(meQueryKey, me),
     onError: (error) => {
       // Created already, by another tab or an earlier attempt with another
       // key: load it instead of reporting an error.

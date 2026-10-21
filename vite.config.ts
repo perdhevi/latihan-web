@@ -21,7 +21,8 @@ export default defineConfig({
   },
   test: {
     // The jsdom tests render the whole app and click through it; under a
-    // busy machine and parallel files one can pass 5 s, Vitest's default.
-    testTimeout: 15_000,
+    // busy machine with every file starting at once, one has needed over
+    // 15 s. The limit is there to catch a hang, not to measure speed.
+    testTimeout: 30_000,
   },
 })

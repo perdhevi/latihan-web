@@ -26,9 +26,11 @@ const fetch = (request: Request) => globalThis.fetch(request)
 export const server = setupServer()
 
 // findBy… waits 1 s by default. The first render of the whole app in a test
-// file is cold (modules, the fake API), and under a busy machine it has
-// taken longer; the tests' own budget is in vite.config.ts.
-configure({ asyncUtilTimeout: 5_000 })
+// file is cold (modules, the fake API): alone it takes about a second, but
+// with every file starting at once on a busy machine it has taken over 11 s.
+// These waits catch hangs, not slowness; the tests' own budget is in
+// vite.config.ts.
+configure({ asyncUtilTimeout: 10_000 })
 
 let consoleErrors: unknown[][] = []
 let consoleErrorsAllowed = false
@@ -143,6 +145,11 @@ export function fakeApi({
     plans: plansFake,
     sessions: fakeSessions(plansFake),
     stats: fakeStats(),
+    measurements: fakeMeasurements(),
+    /** The profile's version: its ETag is `"u<version>"`. */
+    profileVersion: 1,
+    /** Every PUT /users/me: its If-Match and body. */
+    renames: [] as { ifMatch: string | null; body: unknown }[],
   }
   const sorted = [...catalog].sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id))
   server.use(
@@ -150,7 +157,21 @@ export function fakeApi({
     http.post(`${origin}/api/v1/auth/logout`, () => new HttpResponse(null, { status: 204 })),
     http.get(`${origin}/api/v1/users/me`, () => {
       state.meCalls++
-      return state.profile === null ? profileRequired() : HttpResponse.json(user(state.profile))
+      return state.profile === null
+        ? profileRequired()
+        : HttpResponse.json(user(state.profile), { headers: { ETag: `"u${state.profileVersion}"` } })
+    }),
+    http.put(`${origin}/api/v1/users/me`, async ({ request }) => {
+      const body = (await request.json()) as { display_name: string }
+      const ifMatch = request.headers.get('If-Match')
+      state.renames.push({ ifMatch, body })
+      if (state.profile === null) return profileRequired()
+      if (ifMatch !== null && ifMatch !== `"u${state.profileVersion}"`) {
+        return apiError(412, 'precondition_failed', 'record changed since it was read')
+      }
+      state.profile = body.display_name
+      state.profileVersion++
+      return HttpResponse.json(user(state.profile), { headers: { ETag: `"u${state.profileVersion}"` } })
     }),
     http.post(`${origin}/api/v1/users`, async ({ request }) => {
       const body = (await request.json()) as { display_name: string }
@@ -182,6 +203,7 @@ export function fakeApi({
     ...state.plans.handlers,
     ...state.sessions.handlers,
     ...state.stats.handlers,
+    ...state.measurements.handlers,
   )
   return state
 }
@@ -557,5 +579,108 @@ export function progressPoint(bucket: string, values: Partial<ProgressPoint> = {
     volume_completion_pct: null,
     minutes_completion_pct: null,
     ...values,
+  }
+}
+
+type Measurement = components['schemas']['Measurement']
+type MeasurementInput = components['schemas']['MeasurementInput']
+const metricKeys = ['weight_kg', 'height_cm', 'body_fat_percent', 'waist_cm', 'chest_cm', 'hip_cm'] as const
+
+/**
+ * Body measurements as the server keeps them: newest measured_at first,
+ * `limit` at a time; a create replayed per Idempotency-Key; PUT replaces the
+ * whole record (an omitted metric becomes null); at least one metric
+ * (400 validation_failed); an older If-Match gets 412.
+ */
+function fakeMeasurements() {
+  let made = 0
+  const records = new Map<string, { measurement: Measurement; version: number }>()
+  const replays = new Map<string, Measurement>()
+  const requests: { method: string; id?: string; ifMatch: string | null; key: string | null; body?: MeasurementInput }[] = []
+  const reads = new Map<string, number>()
+  const etag = (id: string) => `"m${records.get(id)!.version}"`
+  const found = (id: string, status = 200) =>
+    HttpResponse.json(records.get(id)!.measurement, { status, headers: { ETag: etag(id) } })
+  const missing = () => apiError(404, 'measurement_not_found', 'measurement not found')
+
+  function save(input: MeasurementInput, id: string): Measurement {
+    const previous = records.get(id)
+    const measurement = {
+      id,
+      user_id: user('').id,
+      measured_at: input.measured_at,
+      ...Object.fromEntries(metricKeys.map((key) => [key, input[key] ?? null])),
+      created_at: '2026-10-21T08:00:00Z',
+      updated_at: '2026-10-21T08:00:00Z',
+    } as Measurement
+    records.set(id, { measurement, version: (previous?.version ?? 0) + 1 })
+    return measurement
+  }
+  const empty = (input: MeasurementInput) => metricKeys.every((key) => input[key] == null)
+  const nextId = () => `0190c6a8-0000-7000-b000-${String(++made).padStart(12, '0')}`
+
+  const base = `${origin}/api/v1/users/me/measurements`
+  const handlers = [
+    http.get(base, ({ request }) => {
+      const query = new URL(request.url).searchParams
+      const limit = Number(query.get('limit') ?? 20)
+      const start = Number(query.get('cursor') ?? 0)
+      const all = [...records.values()]
+        .map((record) => record.measurement)
+        .sort((a, b) => b.measured_at.localeCompare(a.measured_at) || b.id.localeCompare(a.id))
+      const next = start + limit < all.length ? String(start + limit) : null
+      return HttpResponse.json({ items: all.slice(start, start + limit), limit, next_cursor: next })
+    }),
+    http.post(base, async ({ request }) => {
+      const body = (await request.json()) as MeasurementInput
+      const key = request.headers.get('Idempotency-Key')
+      requests.push({ method: 'POST', ifMatch: null, key, body })
+      const replay = key === null ? undefined : replays.get(key)
+      if (replay !== undefined) return HttpResponse.json(replay, { status: 201 })
+      if (empty(body)) return apiError(400, 'validation_failed', 'at least one measurement is required')
+      const measurement = save(body, nextId())
+      if (key !== null) replays.set(key, measurement)
+      return found(measurement.id, 201)
+    }),
+    http.get(`${base}/:id`, ({ params }) => {
+      const id = params.id as string
+      reads.set(id, (reads.get(id) ?? 0) + 1)
+      return records.has(id) ? found(id) : missing()
+    }),
+    http.put(`${base}/:id`, async ({ params, request }) => {
+      const id = params.id as string
+      const body = (await request.json()) as MeasurementInput
+      const ifMatch = request.headers.get('If-Match')
+      requests.push({ method: 'PUT', id, ifMatch, key: null, body })
+      if (!records.has(id)) return missing()
+      if (ifMatch !== null && ifMatch !== etag(id)) return apiError(412, 'precondition_failed', 'record changed since it was read')
+      if (empty(body)) return apiError(400, 'validation_failed', 'at least one measurement is required')
+      save(body, id)
+      return found(id)
+    }),
+    http.delete(`${base}/:id`, ({ params, request }) => {
+      const id = params.id as string
+      const ifMatch = request.headers.get('If-Match')
+      requests.push({ method: 'DELETE', id, ifMatch, key: null })
+      if (!records.has(id)) return missing()
+      if (ifMatch !== null && ifMatch !== etag(id)) return apiError(412, 'precondition_failed', 'record changed since it was read')
+      records.delete(id)
+      return new HttpResponse(null, { status: 204 })
+    }),
+  ]
+
+  return {
+    handlers,
+    requests,
+    all: () => [...records.values()].map((record) => record.measurement),
+    reads: (id: string) => reads.get(id) ?? 0,
+    /** A measurement recorded before the test. */
+    seed: (input: MeasurementInput) => save(input, nextId()),
+    /** Changed on another device: a new version. */
+    editElsewhere(id: string, change: Partial<MeasurementInput>) {
+      const record = records.get(id)!
+      record.measurement = { ...record.measurement, ...change } as Measurement
+      record.version++
+    },
   }
 }

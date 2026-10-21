@@ -332,6 +332,7 @@ null deltas render as "—", never as 0.
 3. "Change since first measurement" per metric, as on mobile.
 
 **Tests:** empty form is rejected client-side; clearing a field sends `null`.
+*Done — see [part-09.md](part-09.md).*
 **Tag:** `web-09`.
 
 ## Part 10 — Your data: export and erase
