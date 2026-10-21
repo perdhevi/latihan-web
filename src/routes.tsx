@@ -7,6 +7,9 @@ import { RequireAuth } from './auth/RequireAuth'
 import { SignInPage } from './auth/SignInPage'
 import { IdeasPage } from './features/catalog/IdeasPage'
 import { HomePage } from './features/dashboard/HomePage'
+import { NewPlanPage } from './features/plans/NewPlanPage'
+import { PlanPage } from './features/plans/PlanPage'
+import { PlansPage } from './features/plans/PlansPage'
 import { RequireProfile } from './features/profile/RequireProfile'
 import { WelcomePage } from './features/profile/WelcomePage'
 
@@ -52,18 +55,9 @@ export const routes: RouteObject[] = [
                         element: <Placeholder title="Session in progress" part={6}>The workout you are recording.</Placeholder>,
                       },
                       { path: '/ideas', element: <IdeasPage /> },
-                      {
-                        path: '/plans',
-                        element: <Placeholder title="Plans" part={5}>Your workout plans.</Placeholder>,
-                      },
-                      {
-                        path: '/plans/new',
-                        element: <Placeholder title="New plan" part={5}>Create a workout plan.</Placeholder>,
-                      },
-                      {
-                        path: '/plans/:id',
-                        element: <Placeholder title="Plan" part={5}>Edit a workout plan.</Placeholder>,
-                      },
+                      { path: '/plans', element: <PlansPage /> },
+                      { path: '/plans/new', element: <NewPlanPage /> },
+                      { path: '/plans/:id', element: <PlanPage /> },
                       {
                         path: '/profile',
                         element: <Placeholder title="Profile" part={9}>Your name and body measurements.</Placeholder>,

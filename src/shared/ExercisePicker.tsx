@@ -1,23 +1,9 @@
 import { useId, useState, type KeyboardEvent } from 'react'
 import { categories, type Category } from '../features/catalog/api'
 import { CatalogList } from '../features/catalog/CatalogList'
+import { checkExerciseName, type PickedExercise } from './exercise'
 
-/**
- * What a plan or session row starts from. A catalog entry sets `exercise_id`
- * (the server keeps the link); a free-form exercise has `exercise_id: null`.
- */
-export type PickedExercise = { exercise_id: string | null; name: string; kind: Category }
-
-// ExerciseDetails.name in the contract: 1..200 characters, trimmed.
-const maxName = 200
-
-/** Returns the message to show, or null when the name may be used. */
-function checkExerciseName(name: string): string | null {
-  const trimmed = name.trim()
-  if (trimmed === '') return 'Enter a name for the exercise.'
-  if ([...trimmed].length > maxName) return `An exercise name has at most ${maxName} characters.`
-  return null
-}
+export type { PickedExercise }
 
 /**
  * Choose an exercise from the catalog, or name your own. Holds no form of

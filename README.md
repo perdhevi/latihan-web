@@ -64,3 +64,4 @@ validate it, and what was actually validated.
 | 2 | [Signing in and staying signed in](docs/part-02.md) | How does a browser hold a session without leaking it? |
 | 3 | [App shell, routes and the profile gate](docs/part-03.md) | What does a signed-in user without a profile see? |
 | 4 | [The exercise catalog](docs/part-04.md) | How do we read a paginated, read-only list? |
+| 5 | [Plans: our first writes](docs/part-05.md) | How do we write safely when the network can drop a response, or another device edits the same record? |

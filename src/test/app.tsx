@@ -26,12 +26,29 @@ const fetch = (request: Request) => globalThis.fetch(request)
 export const server = setupServer()
 
 export function setUpFakeServer() {
-  beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
+  beforeAll(() => {
+    shimDialog()
+    server.listen({ onUnhandledRequest: 'error' })
+  })
   afterEach(() => {
     cleanup()
     server.resetHandlers()
   })
   afterAll(() => server.close())
+}
+
+/**
+ * jsdom has <dialog> but not showModal() or close(). Browsers also trap
+ * focus and make the page inert; this only opens and closes it.
+ */
+function shimDialog() {
+  const dialog = HTMLDialogElement.prototype
+  dialog.showModal ??= function (this: HTMLDialogElement) {
+    this.open = true
+  }
+  dialog.close ??= function (this: HTMLDialogElement) {
+    this.open = false
+  }
 }
 
 export const tokens = {
@@ -76,7 +93,15 @@ export function catalogEntry(n: number, name: string, category: CatalogExercise[
  * `catalog` is served by GET /exercises as the server does: by name, filtered
  * by category, `limit` at a time with an opaque cursor.
  */
-export function fakeApi({ profile, catalog = [] }: { profile: string | null; catalog?: CatalogExercise[] }) {
+export function fakeApi({
+  profile,
+  catalog = [],
+  plans = [],
+}: {
+  profile: string | null
+  catalog?: CatalogExercise[]
+  plans?: PlanSeed[]
+}) {
   const state = {
     profile,
     meCalls: 0,
@@ -85,6 +110,7 @@ export function fakeApi({ profile, catalog = [] }: { profile: string | null; cat
     /** The query string of every GET /exercises. */
     catalogQueries: [] as string[],
     detailCalls: 0,
+    plans: fakePlans(plans),
   }
   const sorted = [...catalog].sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id))
   server.use(
@@ -121,8 +147,133 @@ export function fakeApi({ profile, catalog = [] }: { profile: string | null; cat
         ? apiError(404, 'exercise_not_found', 'exercise not found')
         : HttpResponse.json(exercise)
     }),
+    ...state.plans.handlers,
   )
   return state
+}
+
+type Plan = components['schemas']['Plan']
+type PlanInput = components['schemas']['PlanInput']
+/** A plan the fake starts with. `inUse`: sessions use it, so its exercises are fixed. */
+export type PlanSeed = PlanInput & { inUse?: boolean }
+
+/** A request the fake plans endpoints received. */
+type PlanRequest = { method: string; id?: string; ifMatch: string | null; key: string | null; body?: PlanInput }
+
+/**
+ * Plans as the server keeps them: newest first; every write moves the ETag
+ * on, and a write with an older If-Match gets 412; a create's response is
+ * replayed for its Idempotency-Key (422 when the key comes with another
+ * body); a plan in use keeps its exercises (409 plan_in_use) and cannot be
+ * deleted (409 resource_in_use).
+ */
+function fakePlans(seeds: PlanSeed[]) {
+  let made = 0
+  const records = new Map<string, { plan: Plan; version: number; inUse: boolean }>()
+  const replays = new Map<string, { body: string; plan: Plan }>()
+  const requests: PlanRequest[] = []
+  const etag = (id: string) => `"v${records.get(id)!.version}"`
+  // What the server compares for plan_in_use: the exercises without their
+  // ids, as parsed values (field order and null versus absent do not count).
+  const exercisesOf = (plan: Pick<PlanInput, 'exercises'>) =>
+    JSON.stringify(plan.exercises, (field, value: unknown) => {
+      if (field === 'id' || value === null) return undefined
+      if (typeof value !== 'object' || Array.isArray(value)) return value
+      return Object.fromEntries(Object.entries(value as object).sort(([a], [b]) => a.localeCompare(b)))
+    })
+
+  function create(input: PlanInput, inUse = false): Plan {
+    made++
+    const id = `0190c6a8-0000-7000-9000-${String(made).padStart(12, '0')}`
+    const plan = {
+      id,
+      user_id: user('').id,
+      name: input.name,
+      notes: input.notes ?? '',
+      exercises: input.exercises.map((exercise, i) => ({ id: `${id.slice(0, -4)}${String(i).padStart(4, '0')}`, ...exercise })),
+      created_at: new Date(Date.UTC(2026, 9, 21, 0, made)).toISOString(),
+      updated_at: new Date(Date.UTC(2026, 9, 21, 0, made)).toISOString(),
+    } as Plan
+    records.set(id, { plan, version: 1, inUse })
+    return plan
+  }
+  for (const { inUse, ...seed } of seeds) create(seed, inUse)
+
+  const found = (id: string) =>
+    HttpResponse.json(records.get(id)!.plan, { headers: { ETag: etag(id) } })
+  const missing = () => apiError(404, 'plan_not_found', 'plan not found')
+  const stale = (id: string, ifMatch: string | null) => ifMatch !== null && ifMatch !== etag(id)
+
+  const handlers = [
+    http.get(`${origin}/api/v1/plans`, ({ request }) => {
+      const query = new URL(request.url).searchParams
+      const limit = Number(query.get('limit') ?? 20)
+      const start = Number(query.get('cursor') ?? 0)
+      const all = [...records.values()].map((record) => record.plan).reverse()
+      const next = start + limit < all.length ? String(start + limit) : null
+      return HttpResponse.json({ items: all.slice(start, start + limit), limit, next_cursor: next })
+    }),
+    http.get(`${origin}/api/v1/plans/:id`, ({ params }) => {
+      const id = params.id as string
+      return records.has(id) ? found(id) : missing()
+    }),
+    http.post(`${origin}/api/v1/plans`, async ({ request }) => {
+      const body = (await request.json()) as PlanInput
+      const key = request.headers.get('Idempotency-Key')
+      requests.push({ method: 'POST', ifMatch: null, key, body })
+      const replay = key === null ? undefined : replays.get(key)
+      if (replay !== undefined) {
+        if (replay.body !== JSON.stringify(body)) {
+          return apiError(422, 'idempotency_key_reused', 'this key was already used for a different request')
+        }
+        return HttpResponse.json(replay.plan, { status: 201, headers: { 'Idempotent-Replayed': 'true' } })
+      }
+      const plan = create(body)
+      if (key !== null) replays.set(key, { body: JSON.stringify(body), plan })
+      return HttpResponse.json(plan, { status: 201, headers: { ETag: etag(plan.id) } })
+    }),
+    http.put(`${origin}/api/v1/plans/:id`, async ({ params, request }) => {
+      const id = params.id as string
+      const body = (await request.json()) as PlanInput
+      const ifMatch = request.headers.get('If-Match')
+      requests.push({ method: 'PUT', id, ifMatch, key: null, body })
+      const record = records.get(id)
+      if (record === undefined) return missing()
+      if (stale(id, ifMatch)) return apiError(412, 'precondition_failed', 'record changed since it was read')
+      if (record.inUse && exercisesOf(body) !== exercisesOf(record.plan)) {
+        return apiError(409, 'plan_in_use', 'sessions already use this plan, so its exercises cannot change')
+      }
+      const exercises = record.inUse ? record.plan.exercises : create(body).exercises
+      record.plan = { ...record.plan, name: body.name, notes: body.notes ?? '', exercises } as Plan
+      record.version++
+      return found(id)
+    }),
+    http.delete(`${origin}/api/v1/plans/:id`, ({ params, request }) => {
+      const id = params.id as string
+      const ifMatch = request.headers.get('If-Match')
+      requests.push({ method: 'DELETE', id, ifMatch, key: null })
+      const record = records.get(id)
+      if (record === undefined) return missing()
+      if (stale(id, ifMatch)) return apiError(412, 'precondition_failed', 'record changed since it was read')
+      if (record.inUse) return apiError(409, 'resource_in_use', 'remove dependent records before deleting this resource')
+      records.delete(id)
+      return new HttpResponse(null, { status: 204 })
+    }),
+  ]
+
+  return {
+    handlers,
+    requests,
+    /** Every plan, oldest first. */
+    all: () => [...records.values()].map((record) => record.plan),
+    etag,
+    /** Another device renames the plan: a new version. */
+    renameElsewhere(id: string, name: string) {
+      const record = records.get(id)!
+      record.plan = { ...record.plan, name }
+      record.version++
+    },
+  }
 }
 
 /** `ui` inside the app's providers, with a session over the fake API. */

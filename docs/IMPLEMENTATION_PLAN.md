@@ -261,6 +261,7 @@ when another device edits the same record?
 **Tests:** retrying a create after a simulated lost response reuses the same
 `Idempotency-Key`; `412` shows the conflict UI; `plan_in_use` offers Save as new.
 **Validate (real API):** edit the same plan in two tabs; the second save gets 412.
+*Done — see [part-05.md](part-05.md).*
 **Tag:** `web-05`.
 
 ## Part 6 — Recording a session

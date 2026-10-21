@@ -1,4 +1,5 @@
 import createClient, { type ClientOptions } from 'openapi-fetch'
+import type { Versioned } from './concurrency'
 import { ApiError, errorFromResponse } from './errors'
 import type { paths } from './schema'
 
@@ -33,6 +34,23 @@ type SuccessData<Result> = Result extends { data: infer Data; error?: never }
 export async function unwrap<Result extends FetchResult>(
   call: Promise<Result>,
 ): Promise<SuccessData<Result>> {
+  return (await settle(call)).data
+}
+
+/**
+ * Like unwrap, and also returns the record's ETag, the version to send back
+ * in If-Match when the record is written (see api/concurrency.ts).
+ */
+export async function unwrapVersioned<Result extends FetchResult>(
+  call: Promise<Result>,
+): Promise<Versioned<SuccessData<Result>>> {
+  const { data, response } = await settle(call)
+  return { data, etag: response.headers.get('ETag') }
+}
+
+async function settle<Result extends FetchResult>(
+  call: Promise<Result>,
+): Promise<{ data: SuccessData<Result>; response: Response }> {
   let result: Result
   try {
     result = await call
@@ -50,5 +68,5 @@ export async function unwrap<Result extends FetchResult>(
   if (result.error !== undefined || !result.response.ok) {
     throw errorFromResponse(result.response, result.error)
   }
-  return result.data as SuccessData<Result>
+  return { data: result.data as SuccessData<Result>, response: result.response }
 }

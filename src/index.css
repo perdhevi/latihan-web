@@ -396,3 +396,211 @@ select {
   background: var(--surface);
   color: var(--text-strong);
 }
+
+/* Plans, the exercise editor and dialogs (Part 5). */
+textarea {
+  font: inherit;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-strong);
+  resize: vertical;
+}
+
+a.button {
+  display: inline-block;
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--bg);
+  text-decoration: none;
+}
+
+button.danger {
+  background: var(--danger);
+}
+
+.danger-text,
+button.link.danger-text {
+  color: var(--danger);
+}
+
+.page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.page-head h1 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.plan-form {
+  display: grid;
+  gap: 16px;
+}
+
+.plan-form > h2 {
+  margin: 8px 0 0;
+}
+
+.field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.field label {
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+/* Fill the column, and shrink with it: an input's default width is ~20 characters. */
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  min-width: 0;
+}
+
+.field-error {
+  color: var(--danger);
+  font-size: 0.9em;
+}
+
+[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.exercise-editor {
+  display: grid;
+  gap: 16px;
+  justify-items: start;
+}
+
+.exercise-row {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.exercise-row legend {
+  padding: 0 4px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.sets {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+
+.set-row {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) minmax(0, 1fr) max-content;
+  align-items: end;
+  gap: 8px 12px;
+  width: 100%;
+}
+
+.set-label {
+  padding-bottom: 10px;
+  color: var(--muted);
+}
+
+.set-row button.link {
+  padding-bottom: 10px;
+}
+
+.timed {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+button.link:disabled {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.picker-panel {
+  width: 100%;
+  padding: 16px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+}
+
+.picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.picker-head h3 {
+  margin: 0;
+}
+
+.conflict {
+  padding: 12px 16px;
+  border: 1px solid var(--danger);
+  border-radius: 8px;
+}
+
+dialog.confirm {
+  width: min(400px, calc(100% - 32px));
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+dialog.confirm::backdrop {
+  background: rgb(0 0 0 / 0.4);
+}
+
+dialog.confirm h2 {
+  margin-top: 0;
+}
+
+dialog.confirm .actions {
+  justify-content: flex-end;
+}
+
+@media (width < 640px) {
+  .set-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .set-label {
+    grid-column: 1 / -1;
+    padding-bottom: 0;
+  }
+
+  .timed {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
