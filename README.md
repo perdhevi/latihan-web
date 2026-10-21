@@ -1,75 +1,59 @@
-# React + TypeScript + Vite
+# latihan-web
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The browser client of the latihan fitness platform. It talks to the Go
+`latihanAPI` server and gives a signed-in user the same features as the
+Flutter `latihan_mobile` app: plans, workout sessions, planned-versus-done
+comparison, body measurements, the exercise catalog and data export.
 
-Currently, two official plugins are available:
+Unlike the mobile app, the web client is **online-only**: the API is the
+source of truth and an account is required. See
+[docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) for why, and for
+the whole build, part by part.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Requirements
 
-## React Compiler
+- Node.js 24 and npm 11
+- A running `latihanAPI` (Docker), by default on `http://localhost:8080`
+- A checkout of `latihanAPI` next to this one (`../latihanAPI`) when you
+  regenerate the API types
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Run it
 
-## Expanding the ESLint configuration
+Start the API (in the `latihanAPI` checkout):
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```sh
+cp .env.example .env
+docker compose up --build
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+Then, here:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```sh
+npm install
+npm run dev
 ```
+
+Open http://localhost:5173. Vite forwards every `/api` request to the API, so
+the browser only ever talks to one origin and the API needs no CORS headers.
+Point it at another server with `LATIHAN_API_URL`:
+
+```sh
+LATIHAN_API_URL=http://localhost:9090 npm run dev
+```
+
+## Scripts
+
+| Script | What it does |
+| --- | --- |
+| `npm run dev` | Development server with the `/api` proxy |
+| `npm run build` | Type-check and build to `dist/` |
+| `npm run lint` | ESLint |
+
+## Build log
+
+Each part of the build has its own document with what changed, why, how to
+validate it, and what was actually validated.
+
+| Part | Document | Question |
+| --- | --- | --- |
+| 0 | [Baseline](docs/part-00.md) | What does the client talk to, and how does the browser reach it? |
