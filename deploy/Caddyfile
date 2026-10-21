@@ -1,0 +1,67 @@
+# The edge for latihan: the web client and the API on one origin.
+#
+# The browser only ever talks to this host. /api/* and /.well-known/* go to
+# the API with the API's own strict headers; everything else is the single
+# page app, with a Content-Security-Policy that allows only this origin.
+#
+# SITE_ADDRESS is ":80" locally (plain HTTP behind docker compose). In
+# production it is the domain, and Caddy obtains and renews its certificate
+# automatically. (The API's Caddyfile also sets a global `email` for the
+# certificate authority; add one here the same way if wanted.)
+
+{$SITE_ADDRESS::80} {
+	# Refuse oversized bodies before they reach the API (which allows 1 MiB).
+	request_body {
+		max_size 2MB
+	}
+
+	header {
+		# Browsers must use HTTPS for this host from now on (ignored over HTTP).
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		# Nothing may frame either the app or the API (clickjacking).
+		X-Frame-Options DENY
+		-Server
+	}
+
+	@api path /api/* /.well-known/*
+	handle @api {
+		# A JSON API has nothing to render, frame or load: the API's policy,
+		# scoped to the API. On every response it would blank the app.
+		header Content-Security-Policy "default-src 'none'; frame-ancestors 'none'"
+
+		# Caddy replaces any X-Forwarded-For a client sends with the client's
+		# real address; the API trusts that header only from this proxy
+		# (TRUSTED_PROXIES).
+		reverse_proxy {$API_UPSTREAM:latihan-api:8080} {
+			health_uri /ready
+			health_interval 10s
+		}
+	}
+
+	handle {
+		# Scripts, styles and requests only from this origin; no inline script,
+		# no eval, no plug-ins, no framing, no <base> tricks. The tokens in
+		# sessionStorage are only as safe as the scripts allowed to run here.
+		header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+
+		# Built files carry a content hash in their name: cache them for good.
+		# Everything else (index.html) is checked on every visit, so a new
+		# release is picked up at once.
+		@hashed path /assets/*
+		header @hashed Cache-Control "public, max-age=31536000, immutable"
+		@other not path /assets/*
+		header @other Cache-Control "no-cache"
+
+		root * /srv/web
+		# A route such as /plans/123 is the app's, not a file.
+		try_files {path} /index.html
+		file_server
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}

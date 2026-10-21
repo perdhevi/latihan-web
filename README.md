@@ -51,6 +51,21 @@ LATIHAN_API_URL=http://localhost:9090 npm run dev
 | `npm test` | Unit tests (Vitest, with MSW as a fake API) |
 | `npm run gen:api` | Regenerate `src/api/schema.d.ts` from `../latihanAPI/api/openapi.yaml` (or `LATIHAN_API_SPEC`) |
 | `npm run check:api` | Fail if `schema.d.ts` no longer matches the contract |
+| `npm run e2e` | End-to-end test in Chrome against the production image (`E2E_BASE_URL` for another address) |
+
+## Production image
+
+`Dockerfile` builds the app and serves it with Caddy, which is also the edge
+for the API: one origin, the app's Content-Security-Policy on the app and the
+API's own on `/api/*`. With the API running:
+
+```sh
+docker compose up --build -d --wait
+```
+
+The app is then on http://localhost:8088. See
+[docs/part-11.md](docs/part-11.md) for the headers, the end-to-end test, CI,
+and what production needs from `latihanAPI`.
 
 ## Build log
 
@@ -70,3 +85,4 @@ validate it, and what was actually validated.
 | 8 | [Dashboard and progress](docs/part-08.md) | What does a user want to see first? |
 | 9 | [Profile and body measurements](docs/part-09.md) | How do we edit records whose fields are all optional? |
 | 10 | [Your data: export and erase](docs/part-10.md) | Can users take their data with them, and leave? |
+| 11 | [Hardening and shipping](docs/part-11.md) | What protects the tokens we chose to keep in the browser? |

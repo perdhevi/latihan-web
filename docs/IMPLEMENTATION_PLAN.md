@@ -378,6 +378,9 @@ null deltas render as "—", never as 0.
    reuse detection), CSRF (not applicable: bearer tokens, no cookies),
    clickjacking (`frame-ancestors 'none'`).
 
+*Done — see [part-11.md](part-11.md). The production switch in `latihanAPI`
+(this image in place of its Caddy) is described there, not made.*
+
 **Tag:** `web-11`.
 
 ---

@@ -1,0 +1,90 @@
+# Every push and pull request: the checks each part of the build ran by
+# hand, then the end-to-end journey against the real API.
+#
+# The API's contract and its docker compose come from perdhevi/latihanAPI,
+# checked out next to this repository as ./latihanAPI. If that repository is
+# private, add a read-only token as the LATIHAN_API_TOKEN secret.
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: perdhevi/latihanAPI
+          path: latihanAPI
+          token: ${{ secrets.LATIHAN_API_TOKEN || github.token }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.21.0
+          cache: npm
+      # Exactly the locked versions; no install scripts run.
+      - run: npm ci --ignore-scripts
+      - run: npm run lint
+      - run: npx tsc -b
+      # Fails when src/api/schema.d.ts no longer matches the contract.
+      - run: npm run check:api
+        env:
+          LATIHAN_API_SPEC: latihanAPI/api/openapi.yaml
+      - run: npm test
+      - run: npm audit --omit=dev
+      - run: npm run build
+
+  e2e:
+    needs: check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: perdhevi/latihanAPI
+          path: latihanAPI
+          token: ${{ secrets.LATIHAN_API_TOKEN || github.token }}
+      # The API as its own CI runs it: development secrets, a fresh database.
+      - name: Start the API
+        working-directory: latihanAPI
+        run: |
+          cp .env.example .env
+          docker compose up --build --detach --wait
+      # The production image, on the API's network, at http://localhost:8088.
+      - name: Start the web image
+        run: docker compose up --build --detach --wait
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.21.0
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e
+      - name: Logs
+        if: failure()
+        run: |
+          docker compose logs
+          docker compose -f latihanAPI/docker-compose.yml logs
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report
+          retention-days: 7
+      - name: Stop
+        if: always()
+        run: |
+          docker compose down
+          docker compose -f latihanAPI/docker-compose.yml down --volumes
