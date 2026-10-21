@@ -116,9 +116,9 @@ Six full runs in a row pass after each change.
 
 ## Found on the second check
 
-A second look at Part 6 in the browser found React warning in the console
-that Home put the Start button, and so the start dialog with its heading
-and buttons, inside a `<p>`: invalid HTML. The tests had rendered Home many
+A second look at Part 6 in the browser found a React warning in the
+console: Home put the Start button, and so the start dialog with its
+heading and buttons, inside a `<p>`, which is invalid HTML. The tests had rendered Home many
 times without noticing, because **Vitest 5 hides the console of passing
 tests**. Two changes:
 
