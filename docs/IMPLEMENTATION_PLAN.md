@@ -302,6 +302,7 @@ when another device edits the same record?
 
 **Tests:** comparison rendering for matched, skipped and unplanned entries;
 null deltas render as "—", never as 0.
+*Done — see [part-07.md](part-07.md).*
 **Tag:** `web-07`.
 
 ## Part 8 — Dashboard and progress

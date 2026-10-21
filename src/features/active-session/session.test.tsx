@@ -235,7 +235,7 @@ describe('editing a saved session', () => {
     await waitFor(() => expect(router.state.location.pathname).toBe(`/sessions/${saved.id}`))
     expect(api.sessions.requests.map((request) => request.ifMatch)).toEqual(['"s1"', '"s2"'])
     // The time was not touched, so it went back as it came, seconds and all.
-    expect(api.sessions.requests[1].body.performed_at).toBe('2026-10-20T06:30:15.000Z')
+    expect(api.sessions.requests[1].body?.performed_at).toBe('2026-10-20T06:30:15.000Z')
     expect(api.sessions.all()[0].name).toBe('Morning (phone)!')
   })
 })

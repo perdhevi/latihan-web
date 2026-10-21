@@ -651,3 +651,96 @@ a.button.secondary {
   font-weight: 600;
   color: var(--text-strong);
 }
+
+/* History and planned versus done (Part 7). */
+.page-head > div > h1 + .hint {
+  margin-top: 4px;
+}
+
+.comparison {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.compare-card {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  border-radius: 8px;
+  background: var(--surface);
+  overflow-x: auto;
+}
+
+.compare-card h3 {
+  margin: 4px 0 8px;
+}
+
+.compare-card.matched {
+  border-left-color: var(--accent);
+}
+
+.compare-card.missed {
+  border-left-color: var(--danger);
+}
+
+.compare-card.missed .eyebrow {
+  color: var(--danger);
+}
+
+.compare-card.unplanned .eyebrow {
+  color: var(--muted);
+}
+
+table.compare {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+table.compare caption {
+  margin-bottom: 4px;
+  font-weight: 700;
+  text-align: left;
+  color: var(--text-strong);
+}
+
+table.compare th,
+table.compare td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+  white-space: nowrap;
+}
+
+table.compare th:first-child {
+  text-align: left;
+}
+
+table.compare thead th {
+  font-size: 0.85em;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+table.totals {
+  max-width: 480px;
+}
+
+@media (width < 640px) {
+  .compare-card {
+    padding: 12px;
+  }
+
+  /* Five columns on a phone: let "5 × 62.5 kg" wrap rather than scroll. */
+  table.compare {
+    font-size: 0.9em;
+  }
+
+  table.compare th,
+  table.compare td {
+    padding: 6px 4px;
+    white-space: normal;
+  }
+}

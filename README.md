@@ -66,3 +66,4 @@ validate it, and what was actually validated.
 | 4 | [The exercise catalog](docs/part-04.md) | How do we read a paginated, read-only list? |
 | 5 | [Plans: our first writes](docs/part-05.md) | How do we write safely when the network can drop a response, or another device edits the same record? |
 | 6 | [Recording a session](docs/part-06.md) | Where does a workout live before it is saved? |
+| 7 | [History and planned-versus-done](docs/part-07.md) | How do we show what was planned next to what was done? |

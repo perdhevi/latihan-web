@@ -14,6 +14,7 @@ import { PlansPage } from './features/plans/PlansPage'
 import { RequireProfile } from './features/profile/RequireProfile'
 import { SessionEditPage } from './features/sessions/SessionEditPage'
 import { SessionPage } from './features/sessions/SessionPage'
+import { SessionsPage } from './features/sessions/SessionsPage'
 import { WelcomePage } from './features/profile/WelcomePage'
 
 /**
@@ -45,10 +46,7 @@ export const routes: RouteObject[] = [
                     errorElement: <ErrorPage />,
                     children: [
                       { path: '/', element: <HomePage /> },
-                      {
-                        path: '/sessions',
-                        element: <Placeholder title="Sessions" part={7}>Your previous sessions, newest first.</Placeholder>,
-                      },
+                      { path: '/sessions', element: <SessionsPage /> },
                       { path: '/sessions/:id', element: <SessionPage /> },
                       { path: '/sessions/:id/edit', element: <SessionEditPage /> },
                       { path: '/session/active', element: <ActiveSessionPage /> },

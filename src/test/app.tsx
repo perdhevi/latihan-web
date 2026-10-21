@@ -300,9 +300,10 @@ function fakePlans(seeds: PlanSeed[]) {
     all: () => [...records.values()].map((record) => record.plan),
     etag,
     get: (id: string) => records.get(id)?.plan,
-    /** A session now uses the plan: its exercises are fixed. */
-    markInUse(id: string) {
-      records.get(id)!.inUse = true
+    /** Whether sessions use the plan: then its exercises are fixed. */
+    setInUse(id: string, inUse: boolean) {
+      const record = records.get(id)
+      if (record !== undefined) record.inUse = inUse
     },
     /** Deleted on another device. */
     deleteElsewhere(id: string) {
@@ -351,18 +352,24 @@ export const heading = (name: string) => screen.findByRole('heading', { level: 1
 
 type Session = components['schemas']['Session']
 type SessionInput = components['schemas']['SessionInput']
-type SessionRequest = { method: string; id?: string; ifMatch: string | null; key: string | null; body: SessionInput }
+type SessionRequest = { method: string; id?: string; ifMatch: string | null; key: string | null; body?: SessionInput }
+type Comparison = components['schemas']['Comparison']
 
 /**
  * Sessions as the server keeps them: creates replayed per Idempotency-Key
  * (422 for another body); `plan_id` must name an existing plan
  * (400 invalid_reference) and `plan_exercise_id` one of its exercises, at
  * most once (400 validation_failed); a saved session puts its plan in use;
- * writes with an older If-Match get 412.
+ * writes with an older If-Match get 412. The list is newest performed_at
+ * first. Comparisons are whatever a test sets with `setComparison`; the
+ * fake does not compute them.
  */
 function fakeSessions(plans: ReturnType<typeof fakePlans>) {
   let made = 0
   const records = new Map<string, { session: Session; version: number }>()
+  const comparisons = new Map<string, Comparison>()
+  const reads = new Map<string, number>()
+  let comparisonCalls = 0
   const replays = new Map<string, { body: string; session: Session }>()
   const requests: SessionRequest[] = []
   const etag = (id: string) => `"s${records.get(id)!.version}"`
@@ -399,7 +406,7 @@ function fakeSessions(plans: ReturnType<typeof fakePlans>) {
       updated_at: '2026-10-21T08:00:00Z',
     } as Session
     records.set(id, { session, version: (previous?.version ?? 0) + 1 })
-    if (session.plan_id !== null) plans.markInUse(session.plan_id)
+    if (session.plan_id !== null) plans.setInUse(session.plan_id, true)
     return session
   }
 
@@ -422,8 +429,43 @@ function fakeSessions(plans: ReturnType<typeof fakePlans>) {
       if (key !== null) replays.set(key, { body: JSON.stringify(body), session })
       return found(session.id, 201)
     }),
+    http.get(`${origin}/api/v1/sessions`, ({ request }) => {
+      const query = new URL(request.url).searchParams
+      const limit = Number(query.get('limit') ?? 20)
+      const start = Number(query.get('cursor') ?? 0)
+      const all = [...records.values()]
+        .map((record) => record.session)
+        .sort((a, b) => b.performed_at.localeCompare(a.performed_at) || b.id.localeCompare(a.id))
+      const next = start + limit < all.length ? String(start + limit) : null
+      return HttpResponse.json({ items: all.slice(start, start + limit), limit, next_cursor: next })
+    }),
+    http.delete(`${origin}/api/v1/sessions/:id`, ({ params, request }) => {
+      const id = params.id as string
+      const ifMatch = request.headers.get('If-Match')
+      requests.push({ method: 'DELETE', id, ifMatch, key: null })
+      const record = records.get(id)
+      if (record === undefined) return apiError(404, 'session_not_found', 'session not found')
+      if (ifMatch !== null && ifMatch !== etag(id)) {
+        return apiError(412, 'precondition_failed', 'record changed since it was read')
+      }
+      records.delete(id)
+      const planId = record.session.plan_id ?? null
+      if (planId !== null && ![...records.values()].some((other) => other.session.plan_id === planId)) {
+        plans.setInUse(planId, false)
+      }
+      return new HttpResponse(null, { status: 204 })
+    }),
+    http.get(`${origin}/api/v1/plans/:id/comparison`, ({ params, request }) => {
+      comparisonCalls++
+      const sessionId = new URL(request.url).searchParams.get('session_id') ?? ''
+      const comparison = comparisons.get(sessionId)
+      return comparison === undefined || comparison.plan_id !== params.id
+        ? apiError(404, 'comparison_not_found', 'session not attached to the requested plan')
+        : HttpResponse.json(comparison)
+    }),
     http.get(`${origin}/api/v1/sessions/:id`, ({ params }) => {
       const id = params.id as string
+      reads.set(id, (reads.get(id) ?? 0) + 1)
       return records.has(id) ? found(id) : apiError(404, 'session_not_found', 'session not found')
     }),
     http.put(`${origin}/api/v1/sessions/:id`, async ({ params, request }) => {
@@ -446,6 +488,12 @@ function fakeSessions(plans: ReturnType<typeof fakePlans>) {
     handlers,
     requests,
     all: () => [...records.values()].map((record) => record.session),
+    comparisonCalls: () => comparisonCalls,
+    /** How many times GET /sessions/{id} was asked for this session. */
+    reads: (id: string) => reads.get(id) ?? 0,
+    setComparison(comparison: Comparison) {
+      comparisons.set(comparison.session_id, comparison)
+    },
     /** A saved session, as if recorded before this test. */
     seed(body: SessionInput) {
       made++
