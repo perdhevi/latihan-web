@@ -114,6 +114,21 @@ down: the first test in a file sometimes waited more than `findBy…`'s 1 s
 for the app's cold first render. The harness now gives `findBy…` 5 s.
 Six full runs in a row pass after each change.
 
+## Found on the second check
+
+A second look at Part 6 in the browser found React warning in the console
+that Home put the Start button, and so the start dialog with its heading
+and buttons, inside a `<p>`: invalid HTML. The tests had rendered Home many
+times without noticing, because **Vitest 5 hides the console of passing
+tests**. Two changes:
+
+- Home wraps the button in a `<div>`.
+- The test harness now fails any test that calls `console.error` (React's
+  reports of invalid markup, missing keys and the like). A test that fails
+  a page on purpose says so with `allowConsoleErrors()`; two do. Putting
+  the `<p>` back fails three tests (React reports a nesting problem once
+  per file).
+
 ## Setup prerequisites
 
 - Part 5's prerequisites. No new packages.
@@ -181,6 +196,10 @@ On 2026-10-21 (Windows 11, Node 24, API from Docker):
   step 6. Statuses as listed. Step 3's reload first looked empty because
   the page was read before the session was restored; read again, both rows
   were there.
+- Checked again afterwards: ten full test runs in a row, then a browser
+  run (start freely, Bench Press 8 × 40, reload, Finish → `201`, draft
+  cleared) whose console showed the nesting warning above; fixed and
+  re-checked (the dialog's parent is a `div`, no error logged on opening).
 - **Not** validated in the browser: a lost response on Finish (the tests
   simulate one: saved by the server, then a network error, then a remount),
   two tabs editing one draft, and storage refused (a test makes `setItem`

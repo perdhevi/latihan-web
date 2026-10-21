@@ -3,7 +3,7 @@ import { screen } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { checkDisplayName, meQueryKey } from './features/profile/api'
-import { fakeApi, heading, origin, renderApp, server, setUpFakeServer } from './test/app'
+import { allowConsoleErrors, fakeApi, heading, origin, renderApp, server, setUpFakeServer } from './test/app'
 
 setUpFakeServer()
 
@@ -143,6 +143,8 @@ describe('the profile gate', () => {
 
 describe('the app shell', () => {
   it('shows the request ID when a page cannot load', async () => {
+    // The page throws on purpose; React logs what the error boundary caught.
+    allowConsoleErrors()
     fakeApi({ profile: 'Ana' })
     let calls = 0
     server.use(
@@ -163,6 +165,8 @@ describe('the app shell', () => {
   })
 
   it('does not retry an answer such as 404', async () => {
+    // The page throws on purpose; React logs what the error boundary caught.
+    allowConsoleErrors()
     fakeApi({ profile: 'Ana' })
     let calls = 0
     server.use(

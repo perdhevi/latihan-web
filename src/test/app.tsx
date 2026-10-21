@@ -5,7 +5,7 @@ import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import type { ReactNode } from 'react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
-import { afterAll, afterEach, beforeAll } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, vi } from 'vitest'
 import type { components } from '../api/schema'
 import { createQueryClient } from '../app/queryClient'
 import { AuthProvider } from '../auth/AuthProvider'
@@ -30,15 +30,38 @@ export const server = setupServer()
 // taken longer; the tests' own budget is in vite.config.ts.
 configure({ asyncUtilTimeout: 5_000 })
 
+let consoleErrors: unknown[][] = []
+let consoleErrorsAllowed = false
+
+/**
+ * For a test that means to log errors (a page that fails on purpose and is
+ * caught by the route's error boundary, which React reports).
+ */
+export function allowConsoleErrors() {
+  consoleErrorsAllowed = true
+}
+
 export function setUpFakeServer() {
   beforeAll(() => {
     shimDialog()
     server.listen({ onUnhandledRequest: 'error' })
   })
+  // React reports invalid markup, missing keys and the like on console.error,
+  // and Vitest hides the console of passing tests: fail the test instead.
+  beforeEach(() => {
+    consoleErrors = []
+    consoleErrorsAllowed = false
+    vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => void consoleErrors.push(args))
+  })
   afterEach(() => {
     cleanup()
     server.resetHandlers()
     localStorage.clear()
+    vi.mocked(console.error).mockRestore()
+    if (consoleErrors.length > 0 && !consoleErrorsAllowed) {
+      const [first] = consoleErrors
+      throw new Error(`console.error was called ${consoleErrors.length} time(s); first: ${first.map(String).join(' ')}`)
+    }
   })
   afterAll(() => server.close())
 }
