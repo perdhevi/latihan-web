@@ -491,10 +491,12 @@ button.link.danger-text {
   justify-items: start;
 }
 
-.exercise-row {
+/* One exercise, shown or edited: folds down to its heading and a summary. */
+.exercise-card {
   display: grid;
-  gap: 12px;
+  gap: 4px;
   width: 100%;
+  min-width: 0;
   margin: 0;
   padding: 16px;
   border: 1px solid var(--border);
@@ -502,10 +504,50 @@ button.link.danger-text {
   background: var(--surface);
 }
 
-.exercise-row legend {
-  padding: 0 4px;
-  font-weight: 700;
+.exercise-card .eyebrow {
+  margin: 0;
+}
+
+.exercise-card .card-heading {
+  margin: 0;
+  font-size: 1.05em;
+}
+
+.card-toggle {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
   color: var(--text-strong);
+  text-align: left;
+  cursor: pointer;
+}
+
+.card-toggle:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.card-toggle .chevron {
+  flex: none;
+  width: 1em;
+  color: var(--muted);
+}
+
+.exercise-card .card-summary {
+  margin: 0;
+  padding-left: calc(1em + 6px);
+}
+
+.card-body {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+  min-width: 0;
 }
 
 .sets {
@@ -666,33 +708,12 @@ a.button.secondary {
 }
 
 .compare-card {
-  min-width: 0;
-  padding: 16px;
-  border: 1px solid var(--border);
   border-left-width: 4px;
-  border-radius: 8px;
-  background: var(--surface);
+}
+
+.compare-card .card-body {
+  display: block;
   overflow-x: auto;
-}
-
-.compare-card h3 {
-  margin: 4px 0 8px;
-}
-
-.compare-card.matched {
-  border-left-color: var(--accent);
-}
-
-.compare-card.missed {
-  border-left-color: var(--danger);
-}
-
-.compare-card.missed .eyebrow {
-  color: var(--danger);
-}
-
-.compare-card.unplanned .eyebrow {
-  color: var(--muted);
 }
 
 table.compare {
@@ -731,7 +752,7 @@ table.totals {
 }
 
 @media (width < 640px) {
-  .compare-card {
+  .exercise-card {
     padding: 12px;
   }
 

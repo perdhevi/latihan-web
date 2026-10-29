@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router'
 import { describeError, isApiError } from '../../api/errors'
 import { ConfirmDialog } from '../../shared/ConfirmDialog'
+import { ExerciseCard } from '../../shared/ExerciseCard'
+import { summarize } from '../../shared/exercise'
 import { categoryLabel } from '../catalog/api'
 import { useComparison, useDeleteSession, useSession, type ExerciseComparison, type Session } from './api'
 import { formatDelta, formatNumber, formatSet, formatWhen, missing } from './format'
@@ -109,9 +111,12 @@ function Activities({ session }: { session: Session }) {
   return (
     <div className="comparison">
       {session.exercises.map((exercise, index) => (
-        <article key={index} className="compare-card">
-          <h3>{exercise.name}</h3>
-          <p className="hint">{categoryLabel(exercise.kind)}</p>
+        <ExerciseCard
+          key={index}
+          className="compare-card"
+          title={exercise.name}
+          summary={`${categoryLabel(exercise.kind)} · ${summarize(exercise)}`}
+        >
           {exercise.kind === 'strength' ? (
             <table className="compare">
               <thead>
@@ -136,7 +141,7 @@ function Activities({ session }: { session: Session }) {
             </p>
           )}
           {exercise.notes !== '' && <p className="hint">{exercise.notes}</p>}
-        </article>
+        </ExerciseCard>
       ))}
     </div>
   )
@@ -216,20 +221,26 @@ function PlannedVersusDone({ session }: { session: Session }) {
 
       <div className="comparison">
         {data.exercises.map((entry, index) => (
-          <ExerciseCard key={entry.plan_exercise_id ?? `extra-${index}`} entry={entry} />
+          <ComparisonCard key={entry.plan_exercise_id ?? `extra-${index}`} entry={entry} />
         ))}
       </div>
     </>
   )
 }
 
-function ExerciseCard({ entry }: { entry: ExerciseComparison }) {
+function ComparisonCard({ entry }: { entry: ExerciseComparison }) {
   const shown = entry.actual ?? entry.planned
   const kind = shown?.kind ?? 'strength'
   return (
-    <article className={`compare-card ${entry.status}`}>
-      <p className="eyebrow">{statusLabel[entry.status]}</p>
-      <h3>{shown?.name}</h3>
+    <ExerciseCard
+      className={`compare-card ${entry.status}`}
+      eyebrow={statusLabel[entry.status]}
+      title={shown?.name}
+      summary={
+        (entry.actual === null ? 'Not logged' : `Done: ${summarize(entry.actual)}`) +
+        (entry.planned === null ? '' : ` · Planned: ${summarize(entry.planned)}`)
+      }
+    >
       {kind === 'strength' ? (
         <table className="compare">
           <thead>
@@ -283,6 +294,6 @@ function ExerciseCard({ entry }: { entry: ExerciseComparison }) {
         </table>
       )}
       {entry.actual?.notes ? <p className="hint">{entry.actual.notes}</p> : null}
-    </article>
+    </ExerciseCard>
   )
 }

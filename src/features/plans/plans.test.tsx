@@ -2,7 +2,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
-import { catalogEntry, fakeApi, heading, origin, renderApp, server, setUpFakeServer, type PlanSeed } from '../../test/app'
+import { catalogEntry, fakeApi, heading, origin, renderApp, server, setUpFakeServer, unfolded, type PlanSeed } from '../../test/app'
 import { planKeys } from './api'
 
 setUpFakeServer()
@@ -19,7 +19,7 @@ const legDay: PlanSeed = {
   ],
 }
 
-const exercise = (n: number) => screen.getByRole('group', { name: `Exercise ${n}` })
+const exercise = (n: number) => unfolded(screen.getByRole('group', { name: `Exercise ${n}` }))
 const setOf = (n: number, set: number) => within(exercise(n)).getByRole('group', { name: `Set ${set}` })
 const alertText = async () => (await screen.findByRole('alert')).textContent
 

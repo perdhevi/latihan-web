@@ -2,7 +2,7 @@
 import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it, vi } from 'vitest'
-import { catalogEntry, fakeApi, heading, origin, renderApp, server, setUpFakeServer, user, type PlanSeed } from '../../test/app'
+import { catalogEntry, fakeApi, heading, origin, renderApp, server, setUpFakeServer, unfolded, user, type PlanSeed } from '../../test/app'
 import { parseDraft } from './store'
 
 setUpFakeServer()
@@ -20,7 +20,8 @@ const legDay: PlanSeed = {
 
 const draftKey = `latihan.activeSession.v1.${user('').id}`
 const storedDraft = () => parseDraft(localStorage.getItem(draftKey))
-const exercise = (n: number) => screen.getByRole('group', { name: `Exercise ${n}` })
+const folded = (n: number) => screen.getByRole('group', { name: `Exercise ${n}` })
+const exercise = (n: number) => unfolded(folded(n))
 const setOf = (n: number, set: number) => within(exercise(n)).getByRole('group', { name: `Set ${set}` })
 const alertText = async () => (await screen.findByRole('alert')).textContent
 
@@ -110,6 +111,11 @@ describe('the session in progress', () => {
     await screen.findByRole('link', { name: 'Resume active session' })
     renderApp('/session/active')
     expect(await heading('Workout')).toBeTruthy()
+    // Rows already logged come back folded, with a summary.
+    const toggle = within(folded(1)).getByRole('button', { name: 'Front Squat' })
+    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+    expect(within(folded(1)).getByText('1 set · 8 × 0 kg')).toBeTruthy()
+    await person.click(toggle)
     expect(within(setOf(1, 1)).getByLabelText('Reps')).toHaveProperty('value', '8')
   })
 

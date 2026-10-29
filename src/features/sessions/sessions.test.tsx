@@ -2,7 +2,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import type { components } from '../../api/schema'
-import { fakeApi, heading, renderApp, setUpFakeServer, user, type PlanSeed } from '../../test/app'
+import { fakeApi, heading, renderApp, setUpFakeServer, unfolded, user, type PlanSeed } from '../../test/app'
 
 setUpFakeServer()
 
@@ -108,7 +108,8 @@ function sessionAgainstPlan(api: ReturnType<typeof fakeApi>) {
   return { session, comparison }
 }
 
-const card = (name: string) => screen.getByRole('heading', { level: 3, name }).closest('article')!
+const folded = (name: string) => screen.getByRole('heading', { level: 3, name }).closest('article')!
+const card = (name: string) => unfolded(folded(name))
 /** The cells of a row, by its header cell. */
 const row = (scope: HTMLElement, label: string) =>
   within(within(scope).getByRole('rowheader', { name: label }).closest('tr')!)
@@ -159,6 +160,11 @@ describe('a session against its plan', () => {
     const totals = screen.getByRole('table', { name: 'Totals' })
     expect(row(totals, 'Volume')).toEqual(['600', '972.5', '+372.5 kg'])
     expect(row(totals, 'Minutes')).toEqual(['25', '28', '+3 min'])
+
+    // Folded at first, with a summary of what was done against the plan.
+    const toggle = within(folded('Squat')).getByRole('button', { name: 'Squat' })
+    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+    expect(within(folded('Squat')).getByText('Done: 3 sets · 6 × 60 kg · Planned: 2 sets · 5 × 60 kg')).toBeTruthy()
 
     const squat = card('Squat')
     expect(within(squat).getByText('Planned and logged')).toBeTruthy()

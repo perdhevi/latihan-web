@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query'
-import { cleanup, configure, render, screen } from '@testing-library/react'
+import { cleanup, configure, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
@@ -395,6 +395,13 @@ export function renderComponent(ui: ReactNode) {
 }
 
 export const heading = (name: string) => screen.findByRole('heading', { level: 1, name })
+
+/** Unfolds an exercise card (see ExerciseCard), if folded, and returns it. */
+export function unfolded(card: HTMLElement): HTMLElement {
+  const toggle = card.querySelector('.card-heading > .card-toggle')
+  if (toggle !== null && toggle.getAttribute('aria-expanded') === 'false') fireEvent.click(toggle)
+  return card
+}
 
 type Session = components['schemas']['Session']
 type SessionInput = components['schemas']['SessionInput']

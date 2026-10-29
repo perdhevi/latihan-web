@@ -1,5 +1,6 @@
 import { cloneElement, useId, useState, type InputHTMLAttributes, type ReactElement, type ReactNode } from 'react'
 import { categories, categoryLabel, type Category } from '../features/catalog/api'
+import { ExerciseCard } from './ExerciseCard'
 import { newDraft, type ExerciseDraft, type ExerciseErrors, type PickedExercise } from './exercise'
 import { ExercisePicker } from './ExercisePicker'
 
@@ -15,6 +16,10 @@ const maxExercises = 100
  * Rows may carry more than a draft (a session's `plan_exercise_id`): edits
  * keep every other field, `create` makes the row for a picked exercise, and
  * `rowNote` adds a line under a row's title.
+ *
+ * Each row is an ExerciseCard that folds down to its name and a one-line
+ * summary. Rows already there when the editor opens start folded; rows added
+ * later start open, ready to fill in. A row with errors always shows its fields.
  */
 export function ExerciseEditor<Row extends ExerciseDraft = ExerciseDraft>({
   exercises,
@@ -30,6 +35,8 @@ export function ExerciseEditor<Row extends ExerciseDraft = ExerciseDraft>({
   rowNote?: (row: Row) => ReactNode
 }) {
   const [picking, setPicking] = useState(false)
+  // The rows there at first render; they start folded.
+  const [initialKeys] = useState(() => new Set(exercises.map((row) => row.key)))
 
   function update(index: number, draft: ExerciseDraft) {
     // ExerciseRow spreads the row it was given, so the extra fields survive.
@@ -51,6 +58,7 @@ export function ExerciseEditor<Row extends ExerciseDraft = ExerciseDraft>({
           index={index}
           draft={draft}
           note={rowNote?.(draft)}
+          startOpen={!initialKeys.has(draft.key)}
           errors={errors[index]}
           first={index === 0}
           last={index === exercises.length - 1}
@@ -88,6 +96,7 @@ function ExerciseRow({
   index,
   draft,
   note,
+  startOpen,
   errors = {},
   first,
   last,
@@ -98,6 +107,7 @@ function ExerciseRow({
   index: number
   draft: ExerciseDraft
   note?: ReactNode
+  startOpen: boolean
   errors?: ExerciseErrors
   first: boolean
   last: boolean
@@ -106,12 +116,23 @@ function ExerciseRow({
   onRemove: () => void
 }) {
   const id = useId()
+  const [open, setOpen] = useState(startOpen)
+  const hasErrors = Object.keys(errors).length > 0
   const set = <Field extends keyof ExerciseDraft>(field: Field, value: ExerciseDraft[Field]) =>
     onChange({ ...draft, [field]: value })
 
   return (
-    <fieldset className="exercise-row">
-      <legend>Exercise {index + 1}</legend>
+    <ExerciseCard
+      as="fieldset"
+      label={`Exercise ${index + 1}`}
+      className="exercise-row"
+      eyebrow={`Exercise ${index + 1}`}
+      title={draft.name.trim() === '' ? 'New exercise' : draft.name}
+      summary={open || hasErrors ? undefined : summarizeDraft(draft)}
+      open={open}
+      onToggle={setOpen}
+      locked={hasErrors}
+    >
       {note}
 
       <Field id={`${id}-name`} label="Name" error={errors.name}>
@@ -209,8 +230,19 @@ function ExerciseRow({
           Remove exercise
         </button>
       </div>
-    </fieldset>
+    </ExerciseCard>
   )
+}
+
+/** One line for a folded row, from the fields as typed. */
+function summarizeDraft(draft: ExerciseDraft): string {
+  if (draft.kind === 'strength') {
+    const count = draft.sets.length === 1 ? '1 set' : `${draft.sets.length} sets`
+    const first = draft.sets[0]
+    return first.repetitions === '' ? count : `${count} · ${first.repetitions} × ${first.weight_kg || 0} kg`
+  }
+  if (draft.minutes === '') return 'No time yet'
+  return draft.avg_bpm === '' ? `${draft.minutes} min` : `${draft.minutes} min · ${draft.avg_bpm} bpm`
 }
 
 /** A label, one control, and the message for it when it is wrong. */
